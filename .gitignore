@@ -1,0 +1,10 @@
+.git/
+.vs/
+Debug/
+x64/
+NEAT/Debug/
+NEAT/x64/
+NEAT.sln
+NEAT.vcxproj
+NEAT.vcxproj.filters
+NEAT.vcxproj.user 
