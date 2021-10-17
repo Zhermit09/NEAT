@@ -120,8 +120,9 @@ public:
 int main()
 {
 	Engine engine;
-	if (engine.Construct(screen_w, screen_h, 1, 1))
+	if (engine.Construct(screen_w, screen_h, 1, 1)){
 		engine.Start();
+	}
 
 	return 0;
 }
