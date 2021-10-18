@@ -27,9 +27,7 @@ public:
 	bool OnUserUpdate(float fElapsedTime) override
 	{
 		// Called once per frame, draws random coloured pixels
-		FillRect(x, y, 50, 50);
-		BACKGROUND_BLUE;
-		X++;
+		
 		return true;
 	}
 };
