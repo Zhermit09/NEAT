@@ -95,7 +95,7 @@ public:
 	}
 
 	void Move(float dTime) {
-		_x -= 12.0f * dTime;
+		_x -= 13.0f * dTime;
 		if (_x < -screen_w) {
 			_x = 0.0f;
 		}
@@ -115,7 +115,7 @@ public:
 
 	void Move(float dTime)
 	{
-		_x -= 70.0f * dTime;
+		_x -= 150.0f * dTime;
 		if (_x < -screen_w) {
 			_x = 0.0f;
 		}
