@@ -177,7 +177,7 @@ public:
 		DrawDecal({ ground->x() + screen_w, 675 }, ground_image, { 2,2 });
 
 		DrawDecal({ round(bird->x()), round(bird->y()) }, bird->Animate(dTime), { 2,2 });
-		
+
 
 		return true;
 	}
