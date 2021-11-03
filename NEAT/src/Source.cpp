@@ -2,13 +2,14 @@
 #include "olcPixelGameEngine.h"
 #include "Bcrypt.h"
 #include <iostream>
-#include <random>
+#include <Windows.h>
+#include <Bcrypt.h>
+#pragma comment(lib, "bcrypt.lib")
 
 
 int screen_w = 576;
 int screen_h = 800;
-
-std::random_device rd;
+int pipe_w = 102;
 
 class Bird {
 	float _x;
@@ -34,7 +35,7 @@ public:
 			sprites[i] = sprt[i];
 		}
 
-		current_image = sprt[1];
+		current_image = sprt[0];
 	}
 
 	olc::Decal* Animate(float dTime) {
@@ -92,14 +93,12 @@ class Pipe {
 
 	float _x;
 	float _y;
-	olc::Decal* _pipe;
 	bool _newPipe = true;
 
 public:
-	Pipe(float x, float y, olc::Decal* pipe) {
+	Pipe(float x, float y) {
 		_x = x;
 		_y = y;
-		_pipe = pipe;
 	}
 
 	void Move(float dTime) {
@@ -118,12 +117,8 @@ public:
 		return _newPipe;
 	}
 
-	void SetNewPipe(bool boolean) {
+	void AllowNewPipe(bool boolean) {
 		_newPipe = boolean;
-	}
-
-	olc::Decal* pipe() {
-		return _pipe;
 	}
 };
 
@@ -177,11 +172,10 @@ class Engine : public olc::PixelGameEngine {
 	Ground* ground;
 
 	olc::Decal* sprites[5];
-
 	olc::Decal* bg_image;
 	olc::Decal* ground_image;
-
-	olc::Decal* pipeI;
+	olc::Decal* pipeImg_Down;
+	olc::Decal* pipeImg_Up;
 
 public:
 	Engine() {
@@ -192,7 +186,8 @@ public:
 
 		bg_image = new olc::Decal(new olc::Sprite("./Images/bg.png"));
 		ground_image = new olc::Decal(new olc::Sprite("./Images/base.png"));
-		pipeI = new olc::Decal(new olc::Sprite("./Images/pipe.png"));
+		pipeImg_Down = new olc::Decal(new olc::Sprite("./Images/pipe.png"));
+		pipeImg_Up = new olc::Decal(new olc::Sprite("./Images/pipe1.png"));
 
 		sprites[0] = new olc::Decal(new olc::Sprite("./Images/bird1.png"));
 		sprites[1] = new olc::Decal(new olc::Sprite("./Images/bird2.png"));
@@ -204,44 +199,80 @@ public:
 		bg = new Background();
 		ground = new Ground();
 
-		pipeList.push_back(new Pipe(screen_w, 700.0 - (rd() % 440), pipeI));
+		pipeList.push_back(new Pipe((float)screen_w, 600.0f - (float)(abs(Random()) % 400)));
 
 		return true;
 	}
 
 	bool OnUserUpdate(float dTime) override {
 
+		Action(dTime);
+		Draw(dTime);
+
+		return true;
+	}
+
+	int Random() {
+		int value;
+		BYTE buffer[sizeof(INT_MAX)];
+		DWORD size = sizeof(INT_MAX);
+
+		BCryptGenRandom(NULL, buffer, size, BCRYPT_USE_SYSTEM_PREFERRED_RNG);
+		std::memcpy(&value, buffer, 4);
+
+		return value;
+	}
+
+	void Action(float dTime) {
 		bird->Jump();
 		bird->Gravity(dTime);
+
 		bg->Move(dTime);
 		ground->Move(dTime);
-
-
-		DrawDecal({ round(bg->x()), -125 }, bg_image, { 2,2 });
-		DrawDecal({ (round(bg->x()) + screen_w), -125 }, bg_image, { 2,2 });
-
-		DrawDecal({ round(bird->x()), round(bird->y()) }, bird->Animate(dTime), { 2,2 });
-
 
 		for (Pipe* pipe : pipeList) {
 			pipe->Move(dTime);
 		}
-		if (pipeList.front()->x() < (screen_w / 2) && (pipeList.front()->newPipe() == true)) {
-			pipeList.push_back(new Pipe((pipeList.front()->x() + 102) + screen_w / 2, 600.0 - (rd() % 400), pipeI));
-			pipeList.front()->SetNewPipe(false);
-		}if (pipeList.front()->x() < -102) {
+
+		NewPossiblePipe();
+		PipeOffScreen();
+	}
+
+	void NewPossiblePipe() {
+		Pipe* pipe = pipeList.front();
+		float x = pipe->x();
+
+		if (x < (screen_w / 2) && (pipe->newPipe() == true)) {
+			pipeList.push_back(new Pipe((x + (float)pipe_w) + screen_w / 2.0f, 600.0f - (float)(abs(Random()) % 400)));
+			pipe->AllowNewPipe(false);
+		}
+	}
+
+	void PipeOffScreen() {
+		if (pipeList.front()->x() < -pipe_w) {
 			pipeList.erase(pipeList.begin());
 		}
+	}
 
-		//Clear(olc::BLACK);
+	void Draw(float dTime) {
+		float bg_x = round(bg->x());
+		float g_x = ground->x();
+
+		DrawDecal({ bg_x, -125 }, bg_image, { 2,2 });
+		DrawDecal({ (bg_x + screen_w), -125 }, bg_image, { 2,2 });
+
+		DrawDecal({ round(bird->x()), round(bird->y()) }, bird->Animate(dTime), { 2,2 });
+
 		for (Pipe* pipe : pipeList) {
-			DrawDecal({ round(pipe->x()),round(pipe->y()) }, pipe->pipe(), { 2,2 });
-			DrawDecal({ round(pipe->x()),round(pipe->y() - 800) }, pipe->pipe(), { 2,2 });
+			float y = round(pipe->y());
+			float x = round(pipe->x());
+
+			DrawDecal({ x, y }, pipeImg_Down, { 2,2 });
+			DrawDecal({ x, (y - 800) }, pipeImg_Up, { 2,2 });
 		}
 
-		DrawDecal({ ground->x(), 675 }, ground_image, { 2,2 });
-		DrawDecal({ ground->x() + screen_w, 675 }, ground_image, { 2,2 });
-		return true;
+		DrawDecal({ g_x, 675 }, ground_image, { 2,2 });
+		DrawDecal({ g_x + screen_w, 675 }, ground_image, { 2,2 });
 	}
 };
 
