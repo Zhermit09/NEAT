@@ -1,21 +1,75 @@
 #define OLC_PGE_APPLICATION
 #include "olcPixelGameEngine.h"
-#include <iostream>
 #include <Windows.h>
 #include <Bcrypt.h>
 #pragma comment(lib, "bcrypt.lib")
 
 
-int screen_w = 576;
-int screen_h = 800;
-int pipe_w = 102;
-int pipe_h = 640;
+const int screen_w = 576;
+const int screen_h = 800;
+const int pipe_w = 102;
+const int pipe_h = 640;
 
 bool g_bool = false;
 float t = 0.0f;
 
 
-class Bird {
+struct _Bird {
+	float x;
+	float y;
+	std::vector <olc::Decal*> sprites;
+
+	float animationTime = 0.0f;
+	float frameTime = 1.0f / 6.0f;
+
+	float fallTime = 0.0f;
+	float vel = 0.0f;
+	float g = 9.82f;
+	bool collide = false;
+
+	olc::Decal* Animate(float dTime) {
+
+		animationTime += dTime;
+		if (animationTime >= (5.0 * frameTime)) {
+			animationTime = 0.0;
+		}
+
+		return sprites[(int)(animationTime / frameTime)];
+	}
+
+
+	void Gravity(float dTime) {
+		fallTime += dTime;
+		float t = fallTime;
+
+		float s = (vel * t) + (g * (t * t) / 2.0f);
+		if (s > 3.7) {
+			s = 3.7f;
+		}
+
+		if (s < 0.0f) {
+			s *= 11.1f;
+			s -= 1.0f;
+		}
+		y += s * 300.0f * (dTime);
+
+
+		//Temp
+		if (y > screen_h) {
+			fallTime = 0.0;
+			y = 0.0;
+			vel = 0.0;
+		}
+	}
+
+	void Jump(float dTime) {
+		fallTime = 0.0;
+		vel = -0.85f;
+	}
+};
+
+
+/*class Bird {
 	float _x;
 	float _y;
 
@@ -108,55 +162,22 @@ public:
 	void shit(bool boo) {
 		collide = boo;
 	}
-};
+};*/
 
-struct _Pipe{
+
+
+struct Pipe {
 	float x;
 	float y;
-	bool newPipe;
+	bool newPipe = true;
 
 	void Move(float dTime) {
-		x = x - 220.0f * (dTime);
+		x -= 220.0f * (dTime);
 	}
-	
 
 };
 
-class Pipe {
 
-public:
-	float _x;
-	float _y;
-
-private:
-	bool _newPipe = true;
-
-public:
-	Pipe(float x, float y) {
-		_x = x;
-		_y = y;
-	}
-
-	void Move(float dTime) {
-		_x = _x - 220.0f * (dTime);
-	}
-
-	float x() {
-		return _x;
-	}
-
-	float y() {
-		return _y;
-	}
-
-	bool newPipe() {
-		return _newPipe;
-	}
-
-	void AllowNewPipe(bool boolean) {
-		_newPipe = boolean;
-	}
-};
 
 struct Moving {
 	float x;
@@ -170,14 +191,16 @@ struct Moving {
 	}
 };
 
-class Engine : public olc::PixelGameEngine {
-	std::vector<Pipe*> pipeList;
 
-	Bird* bird;
+
+class Engine : public olc::PixelGameEngine {
+	std::vector<Pipe> pipeList;
+	std::vector<olc::Decal*> sprites;
+
+	_Bird bird;
 	Moving background;
 	Moving ground;
 
-	olc::Decal* sprites[5];
 	olc::Decal* bg_image;
 	olc::Decal* ground_image;
 	olc::Decal* pipeImg_Down;
@@ -195,17 +218,21 @@ public:
 		pipeImg_Down = new olc::Decal(new olc::Sprite("./Images/pipe.png"));
 		pipeImg_Up = new olc::Decal(new olc::Sprite("./Images/pipe1.png"));
 
-		sprites[0] = new olc::Decal(new olc::Sprite("./Images/bird1.png"));
-		sprites[1] = new olc::Decal(new olc::Sprite("./Images/bird2.png"));
-		sprites[2] = new olc::Decal(new olc::Sprite("./Images/bird3.png"));
-		sprites[3] = new olc::Decal(new olc::Sprite("./Images/bird2.png"));
-		sprites[4] = new olc::Decal(new olc::Sprite("./Images/bird1.png"));
+		sprites = { 
+			new olc::Decal(new olc::Sprite("./Images/bird1.png")),
+			new olc::Decal(new olc::Sprite("./Images/bird2.png")),
+			new olc::Decal(new olc::Sprite("./Images/bird3.png")),
+			new olc::Decal(new olc::Sprite("./Images/bird2.png")),
+			new olc::Decal(new olc::Sprite("./Images/bird1.png")) 
+		};
 
-		bird = new Bird(50.0f, 80.0f, sprites);
+		//bird = new Bird(50.0f, 80.0f, sprites);
+		bird = { 50.0f, 80.0f, sprites };
 		background = { 0.0f, 20.0f };
 		ground = { 0.0f, 220.0f };
 
-		pipeList.push_back(new Pipe((float)screen_w, 600.0f - (float)(abs(Random()) % 361)));
+		pipeList.push_back(Pipe{ (float)screen_w, 600.0f - (float)(abs(Random() % 361)) });
+
 		//pipeList.push_back(new Pipe(50.0f, 600.0f - 360.0f));
 		//pipeList.push_back(new Pipe(440.0f, 600.0f - 0.0f));
 
@@ -220,24 +247,17 @@ public:
 		return true;
 	}
 
-	int Random() {
-		int value;
-		BYTE buffer[sizeof(INT_MAX)];
-		DWORD size = sizeof(INT_MAX);
-
-		BCryptGenRandom(NULL, buffer, size, BCRYPT_USE_SYSTEM_PREFERRED_RNG);
-		std::memcpy(&value, buffer, 4);
-
-		return value;
-	}
+	//###################################################################################################################################
 
 	void Action(float dTime) {
 		//bird->Jump();
 		if (g_bool) {
-			bird->Gravity(dTime);
-			for (Pipe* pipe : pipeList) {
-				pipe->Move(dTime);
+			bird.Gravity(dTime);
+			for (Pipe& pipe : pipeList) {
+				pipe.Move(dTime);
 			}
+			//pipeList[0].Move(dTime);
+
 		}
 
 		//back->Move(dTime); 
@@ -254,17 +274,16 @@ public:
 	}
 
 	void NewPossiblePipe() {
-		Pipe* pipe = pipeList.front();
-		float x = pipe->x();
+		int x = pipeList.front().x;
 
-		if (x < (screen_w / 2) && (pipe->newPipe() == true)) {
-			pipeList.push_back(new Pipe((x + (float)pipe_w) + screen_w / 2.0f, 600.0f - (float)(abs(Random()) % 361)));
-			pipe->AllowNewPipe(false);
+		if (x < (screen_w / 2) && (pipeList.front().newPipe == true)) {
+			pipeList.push_back(Pipe{ (x + (float)pipe_w) + ((float)screen_w / 2.0f), 600.0f - (float)(abs(Random() % 361)) });
+			pipeList.front().newPipe = false;
 		}
 	}
 
 	void PipeOffScreen() {
-		if (pipeList.front()->x() < -pipe_w) {
+		if (pipeList.front().x < -pipe_w) {
 			pipeList.erase(pipeList.begin());
 		}
 	}
@@ -274,24 +293,24 @@ public:
 
 
 		if (GetAsyncKeyState(VK_UP) & 0x8000) {
-			bird->sy(bird->y() - speed);
+			bird.y -= speed;
 		}
 		else if (GetAsyncKeyState(VK_RIGHT) & 0x8000) {
-			bird->sx(bird->x() + speed);
+			bird.x += speed;
 		}
 		else if (GetAsyncKeyState(VK_DOWN) & 0x8000) {
-			bird->sy(bird->y() + speed);
+			bird.y += speed;
 		}
 		else if (GetAsyncKeyState(VK_LEFT) & 0x8000) {
-			bird->sx(bird->x() - speed);
+			bird.x -= speed;
 		}
 		else if (GetAsyncKeyState(VK_SPACE) & 0x0101) {
-			bird->Jump(dTime);
+			bird.Jump(dTime);
 		}
 		else if (GetAsyncKeyState('R') & 0x0101) {
-			bird->sx(50.0f + pipe_w);
-			bird->sy(600.0f - 48.0f);
-			bird->svel(0.0f);
+			bird.x = 50.0f + pipe_w;
+			bird.y = 600.0f - 48.0f;
+			bird.vel = 0.0f;
 
 			//pipeList.clear();
 			//pipeList.push_back(new Pipe(50, 600.0f - 0.0f));
@@ -307,60 +326,78 @@ public:
 				//		t = 0.0f;
 				//	}
 			}
-			if (bird->y() <= 601 && bird->y() >= 600) {
+			if (bird.y <= 601 && bird.y >= 600) {
 				//std::cout << pipeList.back()->x() << std::endl;
 			}
 		}
 	}
 
 	void Collide() {
-		float by = bird->y();
-		float bx = bird->x();
+		float by = bird.y;
+		float bx = bird.x;
 
-		for (Pipe* pipe : pipeList) {
-			float py = pipe->y();
-			float px = pipe->x();
+		for (Pipe& pipe : pipeList) {
+			float py = pipe.y;
+			float px = pipe.x;
 
-			std::cout << (((px <= bx) and (bx <= (px + pipe_w))) and ((py <= by) or ((py - 160) >= by))) << std::endl;
+			//std::cout << (((px <= bx) and (bx <= (px + pipe_w))) and ((py <= by) or ((py - 160) >= by))) << std::endl;
 
 			if ((px <= bx && bx <= (px + pipe_w)) && (!(py <= by) && !(by <= (py + pipe_h)))) {
-				bird->shit(true);
+				bird.collide = true;
 				std::cout << "Collide" << std::endl;
 			}
-			else { bird->shit(false); }
+			else { bird.collide = false; }
 			//std::cout << bird->hit() << std::endl;
 		}
-		std::cout << std::endl;
+		//	std::cout << std::endl;
 	}
 
+	//###################################################################################################################################
+
 	void Draw(float dTime) {
+
 		float bg_x = round(background.x);
 		float g_x = round(ground.x);
 
 		DrawDecal({ bg_x, -125 }, bg_image, { 2,2 });
 		DrawDecal({ (bg_x + screen_w), -125 }, bg_image, { 2,2 });
 
-		for (Pipe* pipe : pipeList) {
-			float y = round(pipe->y());
-			float x = round(pipe->x());
+		for (Pipe& pipe : pipeList) {
+			float y = round(pipe.y);
+			float x = round(pipe.x);
+
+			//std::cout << pipe.x << std::endl;
 
 			DrawDecal({ x, y }, pipeImg_Down, { 2,2 });
 			DrawDecal({ x, (y - 800) }, pipeImg_Up, { 2,2 });
 		}
 
-		if (bird->hit()) {
+		if (bird.collide) {
 			//SetPixelMode(olc::Pixel::MASK);
-			DrawDecal({ round(bird->x()), round(bird->y()) }, bird->Animate(dTime), { 2,2 }, *new olc::Pixel(255, 0, 0, 180));
+			DrawDecal({ round(bird.x), round(bird.y) }, bird.Animate(dTime), { 2,2 }, *new olc::Pixel(255, 0, 0, 180));
 			//SetPixelMode(olc::Pixel::NORMAL);
 		}
 		else {
-			DrawDecal({ round(bird->x()), round(bird->y()) }, bird->Animate(dTime), { 2,2 });
+			DrawDecal({ round(bird.x), round(bird.y) }, bird.Animate(dTime), { 2,2 });
 		}
 
 		DrawDecal({ g_x, 675 }, ground_image, { 2,2 });
 		DrawDecal({ g_x + screen_w, 675 }, ground_image, { 2,2 });
 	}
+
+
+	int Random() {
+		int value;
+		BYTE buffer[sizeof(INT_MAX)];
+		DWORD size = sizeof(INT_MAX);
+
+		BCryptGenRandom(NULL, buffer, size, BCRYPT_USE_SYSTEM_PREFERRED_RNG);
+		std::memcpy(&value, buffer, 4);
+
+		return value;
+	}
 };
+
 
 int main()
 {
