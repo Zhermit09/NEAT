@@ -3,7 +3,7 @@
 #include <Windows.h>
 #include <Bcrypt.h>
 #pragma comment(lib, "bcrypt.lib")
-#define RandomY (600.0f - (float)(abs(Random() % 361)))
+#define RandomY (600.0f - abs(Random() % 361))
 
 const int screen_w = 576;
 const int screen_h = 800;
@@ -18,7 +18,7 @@ bool g_bool = false;
 float t = 0.0f;
 
 
-struct _Bird {
+struct Bird {
 	float x = 0.0f;
 	float y = 0.0f;
 	std::vector <olc::Decal*> sprites;
@@ -105,7 +105,7 @@ class Engine : public olc::PixelGameEngine {
 	std::vector<Pipe> pipeList;
 	std::vector<olc::Decal*> sprites;
 
-	_Bird bird;
+	Bird bird;
 	olc::Pixel tint;
 	Scenery background;
 	Scenery ground;
