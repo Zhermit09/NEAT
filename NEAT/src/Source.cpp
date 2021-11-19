@@ -149,6 +149,8 @@ public:
 		bird_w = scale * sprites[0]->sprite->width;
 		bird_h = scale * sprites[0]->sprite->height;
 
+		CreateMask(sprites[0]->sprite);
+
 		return true;
 	}
 
@@ -173,7 +175,7 @@ public:
 				pipe.Move(dTime);
 			}
 		}
-		
+
 		ground.Move(dTime);
 		background.Move(dTime);
 
@@ -226,13 +228,13 @@ public:
 			bird.Jump(dTime);
 		}
 		else if (GetAsyncKeyState('R') & 0x0101) {
-			bird.x = 50.0f + pipe_w;
-			bird.y = pipeList.front().y - bird_h;
+			bird.x = pipeList.front().x;
+			bird.y = pipeList.front().y;
 			bird.vel = 0.0f;
 
 		}
 		else if (GetAsyncKeyState('G') & 0x0101) {
-			if (g_bool) { 
+			if (g_bool) {
 				g_bool = false;
 			}
 			else if (!g_bool) {
@@ -250,6 +252,12 @@ public:
 			float px = pipe.x;
 
 			if (((bx < px + pipe_w) and (px < (bx + bird_w))) and (((by + bird_h) > py) or (py - (screen_h - pipe_h) > by))) {
+				bird.collide = true;
+				tint.g = 0;
+				tint.b = 0;
+				break;
+			}
+			else if ((by + bird_h) > 675) {
 				bird.collide = true;
 				tint.g = 0;
 				tint.b = 0;
@@ -299,11 +307,28 @@ public:
 
 		return value;
 	}
+
+	void CreateMask(olc::Sprite* sprite) {
+
+		const int b = sprite->height * scale;
+		const int a = sprite->width * scale;
+
+		std::vector<std::vector<bool>> mask(b, std::vector<bool>(a, false));
+
+		for (int y = 0; y < b; y++) {
+			for (int x = 0; x < a; x++) {
+				mask[y][x] = (sprite->GetPixel((int)(x/scale), (int)(y/scale)).a == 255);
+				std::cout << mask[y][x]<< " ";
+			}
+			std::cout << std::endl;
+		}
+	}
 };
 
 
 int main()
 {
+
 	int pixelSize = 1;
 
 	Engine engine;
