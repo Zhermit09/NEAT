@@ -149,7 +149,7 @@ public:
 		bird_w = scale * sprites[0]->sprite->width;
 		bird_h = scale * sprites[0]->sprite->height;
 
-		CreateMask(sprites[0]->sprite);
+		GetMask(sprites[0]->sprite);
 
 		return true;
 	}
@@ -170,7 +170,6 @@ public:
 		if (g_bool) {
 
 			bird.Gravity(dTime);
-
 			for (Pipe& pipe : pipeList) {
 				pipe.Move(dTime);
 			}
@@ -184,7 +183,7 @@ public:
 		t += dTime;
 		//
 
-		Collide();
+		Collision();
 
 		NewPossiblePipe();
 		PipeOffScreen();
@@ -243,7 +242,7 @@ public:
 		}
 	}
 
-	void Collide() {
+	void Collision() {
 		float by = bird.y;
 		float bx = bird.x;
 
@@ -253,13 +252,13 @@ public:
 
 			if (((bx < px + pipe_w) and (px < (bx + bird_w))) and (((by + bird_h) > py) or (py - (screen_h - pipe_h) > by))) {
 				bird.collide = true;
-				tint.g = 0;
+				tint.g = 150;
 				tint.b = 0;
 				break;
 			}
 			else if ((by + bird_h) > 675) {
 				bird.collide = true;
-				tint.g = 0;
+				tint.g = 150;
 				tint.b = 0;
 				break;
 			}
@@ -269,6 +268,26 @@ public:
 				tint.g = 255;
 				tint.b = 255;
 			}
+		}
+	}
+
+	void PixelPerfect() {
+
+	}
+
+	void GetMask(olc::Sprite* sprite) {
+
+		const int b = sprite->height * scale;
+		const int a = sprite->width * scale;
+
+		std::vector<std::vector<bool>> mask(b, std::vector<bool>(a, false));
+
+		for (int y = 0; y < b; y++) {
+			for (int x = 0; x < a; x++) {
+				mask[y][x] = (sprite->GetPixel((int)(x / scale), (int)(y / scale)).a == 255);
+				std::cout << mask[y][x] << " ";
+			}
+			std::cout << std::endl;
 		}
 	}
 
@@ -306,22 +325,6 @@ public:
 		std::memcpy(&value, buffer, 4);
 
 		return value;
-	}
-
-	void CreateMask(olc::Sprite* sprite) {
-
-		const int b = sprite->height * scale;
-		const int a = sprite->width * scale;
-
-		std::vector<std::vector<bool>> mask(b, std::vector<bool>(a, false));
-
-		for (int y = 0; y < b; y++) {
-			for (int x = 0; x < a; x++) {
-				mask[y][x] = (sprite->GetPixel((int)(x/scale), (int)(y/scale)).a == 255);
-				std::cout << mask[y][x]<< " ";
-			}
-			std::cout << std::endl;
-		}
 	}
 };
 
