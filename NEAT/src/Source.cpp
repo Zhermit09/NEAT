@@ -4,6 +4,7 @@
 #include <Bcrypt.h>
 #pragma comment(lib, "bcrypt.lib")
 #define RandomY (600.0f - abs(Random() % 361))
+#define PI 3.141592653589793238462643383279502884197169399375105820974944592307816406286
 
 const int screen_w = 576;
 const int screen_h = 800;
@@ -16,7 +17,7 @@ int bird_h;
 
 bool g_bool = false;
 float t = 0.0f;
-
+float grader = PI / 180;
 
 struct Bird {
 	float x = 0.0f;
@@ -30,6 +31,11 @@ struct Bird {
 	float vel = 0.0f;
 	float g = 9.82f;
 	bool collide = false;
+	float height = 0;
+	float rotation = 0;
+	float s;
+	float maxRotation = -20.0f * grader;
+	float rotVel = 0.8f * grader;
 
 	olc::Decal* Animate(float dTime) {
 
@@ -46,7 +52,7 @@ struct Bird {
 		fallTime += dTime;
 		float t = fallTime;
 
-		float s = (vel * t) + (g * (t * t) / 2.0f);
+		s = (vel * t) + (g * (t * t) / 2.0f);
 		if (s > 3.7) {
 			s = 3.7f;
 		}
@@ -57,7 +63,6 @@ struct Bird {
 		}
 		y += s * 300.0f * (dTime);
 
-
 		//Temp
 		if (y > screen_h) {
 			fallTime = 0.0;
@@ -66,9 +71,22 @@ struct Bird {
 		}
 	}
 
+	void Rotation(float dTime) {
+		if (s < 0) {
+			if (rotation > maxRotation) {
+				rotation = maxRotation;
+			}
+		}
+		else {
+			if (rotation < 90 * grader and y > height) {
+				rotation += rotVel * 300 * (dTime);
+			}
+		}
+	}
 	void Jump(float dTime) {
 		fallTime = 0.0;
 		vel = -0.85f;
+		height = y - bird_h/2;
 	}
 };
 
@@ -123,7 +141,6 @@ public:
 
 
 	bool OnUserCreate() override {
-
 		bg_image = new olc::Decal(new olc::Sprite("./Images/bg.png"));
 		ground_image = new olc::Decal(new olc::Sprite("./Images/base.png"));
 		pipeImg_Down = new olc::Decal(new olc::Sprite("./Images/pipe.png"));
@@ -138,7 +155,7 @@ public:
 		};
 
 		tint = *new olc::Pixel(255, 255, 255);
-		bird = { 50.0f, 80.0f, sprites };
+		bird = { 50.0f, 80.0f, sprites};
 		background = { 0.0f, 20.0f };
 		ground = { 0.0f, 220.0f };
 
@@ -176,6 +193,7 @@ public:
 		
 		ground.Move(dTime);
 		background.Move(dTime);
+		bird.Rotation(dTime);
 
 		//Tools
 		DevMove(dTime);
@@ -242,8 +260,8 @@ public:
 	}
 
 	void Collide() {
-		float by = bird.y;
-		float bx = bird.x;
+		float by = bird.y - (bird_h);
+		float bx = bird.x - (bird_w);
 
 		for (Pipe& pipe : pipeList) {
 			float py = pipe.y;
@@ -282,7 +300,7 @@ public:
 			DrawDecal({ x, (y - screen_h) }, pipeImg_Up, { scale,scale });
 		}
 
-		DrawDecal({ round(bird.x), round(bird.y) }, bird.Animate(dTime), { scale,scale }, tint);
+		DrawRotatedDecal({ round(bird.x), round(bird.y) }, bird.Animate(dTime), bird.rotation, { bird_w / 4.0f, bird_h / 4.0f}, { scale,scale }, tint);
 
 		DrawDecal({ g_x, 675 }, ground_image, { scale,scale });
 		DrawDecal({ g_x + screen_w, 675 }, ground_image, { scale,scale });
@@ -313,3 +331,6 @@ int main()
 
 	return 0;
 }
+
+
+
