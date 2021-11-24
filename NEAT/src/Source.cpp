@@ -233,11 +233,13 @@ public:
 		}
 	}
 
+
 	void PipeOffScreen() {
 		if (pipeList.front().x < -pipe_w) {
 			pipeList.erase(pipeList.begin());
 		}
 	}
+
 
 	void DevMove(float dTime) {             //some tools, olc has keyboard mapping
 		float speed = 100.0f * dTime;
@@ -280,6 +282,7 @@ public:
 			bird.angle += 25 * degrees * 40 * (dTime);
 		}
 	}
+
 
 	void Collision() {
 		bird.collide = false;
@@ -346,6 +349,7 @@ public:
 		}*/
 	}
 
+
 	void PixelPerfect(std::vector<std::vector<bool>> mask, std::vector<std::vector<bool>> mask_Bird, int dY, int dX) {
 
 		int _y = std::max(0, -dY);
@@ -375,6 +379,7 @@ public:
 		}
 	}
 
+
 	std::vector<std::vector<bool>> GetMask(olc::Sprite* sprite) {
 
 		const int h = sprite->height * scale;
@@ -389,25 +394,26 @@ public:
 		return mask;
 	}
 
+
 	std::vector<std::vector<bool>> RotateBirdMask() {
 		float s = sin(bird.angle);
 		float c = cos(bird.angle);
 
-		float w = abs(2 * (round((abs(c) * (bird_w / (2.0f))) - (abs(s) * (-bird_h / (2.0f))))));
-		float h = abs(2 * (round((abs(s) * (-bird_w / (2.0f))) + (abs(c) * (-bird_h / (2.0f))))));
+		int w = abs(2 * ((int)round((abs(c) * (bird_w / (2.0f))) - (abs(s) * (-bird_h / (2.0f))))));
+		int h = abs(2 * ((int)round((abs(s) * (-bird_w / (2.0f))) + (abs(c) * (-bird_h / (2.0f))))));
 
 		auto mask = GetMask(bird.current);
 		std::vector<std::vector<bool>> rotated_mask(h, std::vector<bool>(w, false));
 
-		int dx = round(w / 2 - bird_w / 2);
-		int dy = round(h / 2 - bird_h / 2);
+		int dx = (int)round(w / 2.f - bird_w / 2.f);
+		int dy = (int)round(h / 2.f - bird_h / 2.f);
 
 		//Can reverse the procces to get rid of the gaps
 		for (int y = 0; y < bird_h; y++) {
 			for (int x = 0; x < bird_w; x++) {
 
-				int rx = round((c * (x - bird_w / 2.0f)) - (s * (y - bird_h / (2.0f)))) + (w / 2);
-				int ry = round((s * (x - bird_w / (2.0f))) + (c * (y - bird_h / (2.0f)))) + (h / 2);
+				int rx = (int)round((c * (x - bird_w / 2.0f)) - (s * (y - bird_h / (2.0f)))) + (w / 2);
+				int ry = (int)round((s * (x - bird_w / (2.0f))) + (c * (y - bird_h / (2.0f)))) + (h / 2);
 
 				if (rx < 0) rx = 0;
 				if (rx >= w) rx = w - 1;
@@ -415,7 +421,6 @@ public:
 				if (ry >= h) ry = h - 1;
 
 				rotated_mask[ry][rx] = mask[y][x];
-
 			}
 		}
 
@@ -437,6 +442,7 @@ public:
 		//tint.a = 50;*/
 		return rotated_mask;
 	}
+
 	//###################################################################################################################################
 
 	void Draw(float dTime) {
@@ -465,8 +471,9 @@ public:
 		DrawDecal({ g_x + screen_w, 675 }, ground_image, { scale,scale });
 	}
 
-	int Random() {
-		long long int value;
+
+	int64_t Random() {
+		int64_t value;
 		BYTE buffer[sizeof(INT64_MAX)];
 		DWORD size = sizeof(INT64_MAX);
 
