@@ -206,7 +206,7 @@ public:
 				pipe.Move(dTime);
 			}
 		}
-
+		
 		ground.Move(dTime);
 		background.Move(dTime);
 
@@ -261,8 +261,8 @@ public:
 			bird.Jump(dTime);
 		}
 		else if (GetAsyncKeyState('R') & 0x0101) {
-			bird.x = pipeList.front().x;
-			bird.y = pipeList.front().y;
+			bird.x = 50.0f + pipe_w;
+			bird.y = pipeList.front().y - bird_h;
 			bird.vel = 0.0f;
 			bird.fallTime = 0;
 			bird.angle = 0;
