@@ -19,6 +19,8 @@ bool game_loop = false;
 float degrees = PI / 180;
 float t = 0.0f;
 
+int score = 0;
+
 struct Bird {
 	float x = 0.0f;
 	float y = 0.0f;
@@ -37,6 +39,8 @@ struct Bird {
 	float height{};
 	float angle{};
 
+	float bx{};
+	float by{};
 
 	olc::Decal* Animate(float dTime) {
 
@@ -104,11 +108,18 @@ struct Pipe {
 	float x{};
 	float y{};
 	bool newPipe = true;
+	bool hasNotScored = true;
 
 	void Move(float dTime) {
 		x -= 220.0f * (dTime);
 	}
 
+	void Score(float birdX) {
+		if (x < birdX and hasNotScored) {
+			score++;
+			hasNotScored = false;
+		}
+	}
 };
 
 
@@ -180,6 +191,7 @@ public:
 		mask_PipeImg_Down = GetMask(pipeImg_Down->sprite);
 		mask_PipeImg_Up = GetMask(pipeImg_Up->sprite);
 		mask_Ground = GetMask(ground_image->sprite);
+
 		return true;
 	}
 
@@ -202,6 +214,7 @@ public:
 
 			for (Pipe& pipe : pipeList) {
 				pipe.Move(dTime);
+				pipe.Score(bird.bx);
 			}
 		}
 
@@ -254,30 +267,29 @@ public:
 	void DevMove(float dTime) {             //some tools, olc has keyboard mapping
 		float speed = 100.0f * dTime;
 
-
-		if (GetAsyncKeyState(VK_UP) & 0x8000) {
+		if (GetKey(olc::Key::UP).bHeld) {
 			bird.y -= speed;
 		}
-		else if (GetAsyncKeyState(VK_RIGHT) & 0x8000) {
+		else if (GetKey(olc::Key::RIGHT).bHeld) {
 			bird.x += speed;
 		}
-		else if (GetAsyncKeyState(VK_DOWN) & 0x8000) {
+		else if (GetKey(olc::Key::DOWN).bHeld) {
 			bird.y += speed;
 		}
-		else if (GetAsyncKeyState(VK_LEFT) & 0x8000) {
+		else if (GetKey(olc::Key::LEFT).bHeld) {
 			bird.x -= speed;
 		}
-		else if (GetAsyncKeyState(VK_SPACE) & 0x0101) {
+		else if (GetKey(olc::Key::SPACE).bPressed) {
 			bird.Jump(dTime);
 		}
-		else if (GetAsyncKeyState('R') & 0x0101) {
+		else if (GetKey(olc::Key::R).bPressed) {
 			bird.x = pipeList.front().x;
 			bird.y = pipeList.front().y;
 			bird.vel = 0.0f;
 			bird.fallTime = 0;
 			bird.angle = 0;
 		}
-		else if (GetAsyncKeyState('G') & 0x0101) {
+		else if (GetKey(olc::Key::G).bPressed) {
 			if (game_loop) {
 				game_loop = false;
 			}
@@ -285,10 +297,10 @@ public:
 				game_loop = true;
 			}
 		}
-		else if (GetAsyncKeyState('E') & 0x0101) {
+		else if (GetKey(olc::Key::E).bHeld) {
 			bird.angle += -25 * degrees * 40 * (dTime);
 		}
-		else if (GetAsyncKeyState('Q') & 0x0101) {
+		else if (GetKey(olc::Key::Q).bHeld) {
 			bird.angle += 25 * degrees * 40 * (dTime);
 		}
 	}
@@ -300,8 +312,11 @@ public:
 		float x = (abs(cos(bird.angle)) * (bird_w / (2.0f))) - (abs(sin(bird.angle)) * (-bird_h / (2.0f)));
 		float y = (abs(sin(bird.angle)) * (-bird_w / (2.0f))) + (abs(cos(bird.angle)) * (-bird_h / (2.0f)));
 
-		float by = bird.y + (bird_h / 2.f) + y;
-		float bx = bird.x + (bird_w / 2.f) - x;
+		bird.by = bird.y + (bird_h / 2.f) + y;
+		bird.bx = bird.x + (bird_w / 2.f) - x;
+
+		float by = bird.by;
+		float bx = bird.bx;
 
 		std::vector<std::vector<bool>> mask_Bird;
 
@@ -406,6 +421,9 @@ public:
 		return rotated_mask;
 	}
 
+
+
+
 	//###################################################################################################################################
 
 	void Draw(float dTime) {
@@ -432,6 +450,9 @@ public:
 
 		DrawDecal({ g_x, 675 }, ground_image, { scale,scale });
 		DrawDecal({ g_x + screen_w, 675 }, ground_image, { scale,scale });
+
+		DrawStringDecal({ TextCenter() - 3, 103 }, std::to_string(score), olc::BLACK, { 3.01f * scale, 4.1f * scale });
+		DrawStringDecal({ TextCenter(), 100 }, std::to_string(score), olc::WHITE, { 3 * scale, 4 * scale });
 	}
 
 
@@ -444,6 +465,16 @@ public:
 		std::memcpy(&value, buffer, 8);
 
 		return value;
+	}
+
+
+	float TextCenter() {
+		int digit = 0;
+
+		for (char i : std::to_string(score)) {
+			digit++;
+		}
+		return ((screen_w - digit * (8 * 3 * scale)) / 2.f);
 	}
 };
 
@@ -459,3 +490,5 @@ int main()
 
 	return 0;
 }
+
+
