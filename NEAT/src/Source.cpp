@@ -188,8 +188,6 @@ public:
 
 		Actions(dTime);
 		Draw(dTime);
-		//system("clear");
-		//system("clear");
 		return true;
 	}
 
@@ -219,6 +217,18 @@ public:
 		PipeOffScreen();
 
 		Collision();
+		//Temp
+		if (bird.collide) {
+			//std::cout << "collide" << std::endl;
+			tint.r = 255;
+			tint.g = 0;
+			tint.b = 0;
+		}
+		else {
+			tint.r = 255;
+			tint.g = 255;
+			tint.b = 255;
+		}
 	}
 
 
@@ -296,10 +306,6 @@ public:
 		std::vector<std::vector<bool>> mask_Bird;
 
 		if ((by + abs(y + y)) > 675) {
-			/*tint.r = 255;
-			tint.g = 150;
-			tint.b = 0;	*/
-
 			mask_Bird = RotateBirdMask();
 			PixelPerfect(mask_Ground, mask_Bird, (675 - (int)by), 0);
 			if (bird.collide) return;
@@ -311,9 +317,6 @@ public:
 			float px = pipe.x;
 
 			if (((bx < px + pipe_w) and (px < (bx + abs(x + x)))) and (((by + abs(y + y)) > py) or (py - (screen_h - pipe_h) > by))) {
-				/*tint.r = 255;
-				tint.g = 150;
-				tint.b = 0;*/
 
 				if (mask_Bird.empty()) {
 					mask_Bird = RotateBirdMask();
@@ -323,30 +326,13 @@ public:
 				if (bird.collide) return;
 				PixelPerfect(mask_PipeImg_Up, mask_Bird, (int)round(pipe.y - screen_h) - (int)round(by), (int)round(pipe.x) - (int)round(bx));
 				if (bird.collide) return;
+				if ((by < 0) and (bx < px + pipe_w - 2 * scale) and ((px + 2 * scale) < (bx + abs(x + x)))) {
+					bird.collide = true;
+					return;
+				}
+
 			}
 		}
-
-		/* Makes tint work propperly
-		bool temp = false;
-
-		for (Pipe& pipe : pipeList) {
-			float py = pipe.y;
-			float px = pipe.x;
-
-			if (!((by + abs(y + y)) > 675) and !(((bx < px + pipe_w) and (px < (bx + abs(x + x)))) and (((by + abs(y + y)) > py) or (py - (screen_h - pipe_h) > by)))) {
-
-				temp = true;
-			}
-			else {
-				temp = false;
-				break;
-			}
-		} if (temp) {
-
-			tint.r = 255;
-			tint.g = 255;
-			tint.b = 255;
-		}*/
 	}
 
 
@@ -363,16 +349,10 @@ public:
 				for (int x = _x; x < w; x++) {
 					if (mask_Bird[y + dY][x + dX] and mask[y][x]) {
 						bird.collide = true;
-						tint.r = 255;
-						tint.g = 0;
-						tint.b = 0;
 						return;
 					}
 					else {
 						bird.collide = false;
-						tint.r = 255;
-						tint.g = 255;
-						tint.b = 255;
 					}
 				}
 			}
@@ -423,23 +403,6 @@ public:
 				rotated_mask[ry][rx] = mask[y][x];
 			}
 		}
-
-		/*   Mask Draw on screen
-		FillRect({ 0,0 }, { screen_w, screen_h }, olc::BLACK);
-
-
-		for (int y = 0; y < rotated_mask.size(); y++) {
-			for (int x = 0; x < rotated_mask[0].size(); x++) {
-
-				if (rotated_mask[y][x]) {
-					olc::PixelGameEngine::Draw((bird.x + x - dx), (bird.y + y - dy), olc::RED);
-				}
-
-				//std::cout << rotated_mask[y][x] << " ";
-			}
-			//std::cout << std::endl;
-		}
-		//tint.a = 50;*/
 		return rotated_mask;
 	}
 
