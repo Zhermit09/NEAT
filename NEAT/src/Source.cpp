@@ -15,11 +15,11 @@ int pipe_h;
 int bird_w;
 int bird_h;
 
+int score = 0;
 bool game_loop = false;
 float degrees = PI / 180;
 float t = 0.0f;
 
-int score = 0;
 
 struct Bird {
 	float x = 0.0f;
@@ -30,7 +30,6 @@ struct Bird {
 	float animationTime{};
 	float frameTime = 1.0f / 17.0f;
 
-	float fallTime{};
 	float vel{};
 	float g = 9.82f;
 	bool collide{};
@@ -39,6 +38,7 @@ struct Bird {
 	float height{};
 	float angle{};
 
+	//by is currently not needed
 	float bx{};
 	float by{};
 
@@ -55,23 +55,19 @@ struct Bird {
 
 
 	void Gravity(float dTime) {
-		fallTime += dTime;
-		float t = fallTime;
+		if (dTime > 0.2f) { dTime = 0.2f; }
 
-		s = (vel * t) + (g * (t * t) / 2.0f);
+		s = 300 * vel * dTime;
+		vel += (g / 2) * dTime;
+
 		if (s > 3.7) {
 			s = 3.7f;
 		}
 
-		if (s < 0.0f) {
-			s *= 11.1f;
-			s -= 1.0f;
-		}
-		y += s * 300.0f * (dTime);
+		y += s;
 
 		//Temp
 		if (y > screen_h) {
-			fallTime = 0.0;
 			y = 0.0;
 			vel = 0.0;
 			angle = 0;
@@ -95,9 +91,8 @@ struct Bird {
 		}
 
 	}
-	void Jump(float dTime) {
-		fallTime = 0.0;
-		vel = -0.85f;
+	void Jump() {
+		vel = -1.67;
 		height = y - bird_h / 4;
 	}
 };
@@ -176,7 +171,9 @@ public:
 			new olc::Decal(new olc::Sprite("./Images/bird1.png"))
 		};
 
+		//Tint is temp
 		tint = *new olc::Pixel(255, 255, 255);
+
 		bird = { 50.0f, 80.0f, sprites };
 		background = { 0.0f, 20.0f };
 		ground = { 0.0f, 220.0f };
@@ -197,7 +194,6 @@ public:
 
 
 	bool OnUserUpdate(float dTime) override {
-
 		Actions(dTime);
 		Draw(dTime);
 		return true;
@@ -222,7 +218,7 @@ public:
 		background.Move(dTime);
 
 		//Tools
-		DevMove(dTime);
+		DevTools(dTime);
 		t += dTime;
 		//
 
@@ -232,7 +228,6 @@ public:
 		Collision();
 		//Temp
 		if (bird.collide) {
-			//std::cout << "collide" << std::endl;
 			tint.r = 255;
 			tint.g = 0;
 			tint.b = 0;
@@ -264,7 +259,7 @@ public:
 	}
 
 
-	void DevMove(float dTime) {             //some tools, olc has keyboard mapping
+	void DevTools(float dTime) {             //some tools
 		float speed = 100.0f * dTime;
 
 		if (GetKey(olc::Key::UP).bHeld) {
@@ -280,13 +275,12 @@ public:
 			bird.x -= speed;
 		}
 		else if (GetKey(olc::Key::SPACE).bPressed) {
-			bird.Jump(dTime);
+			bird.Jump();
 		}
 		else if (GetKey(olc::Key::R).bPressed) {
 			bird.x = pipeList.front().x;
 			bird.y = pipeList.front().y;
 			bird.vel = 0.0f;
-			bird.fallTime = 0;
 			bird.angle = 0;
 		}
 		else if (GetKey(olc::Key::G).bPressed) {
@@ -420,9 +414,6 @@ public:
 		}
 		return rotated_mask;
 	}
-
-
-
 
 	//###################################################################################################################################
 
