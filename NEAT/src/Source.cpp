@@ -65,14 +65,6 @@ struct Bird {
 		}
 
 		y += s;
-
-		//Temp
-		if (y > screen_h) {
-			y = 0.0;
-			vel = 0.0;
-			angle = 0;
-			height = 0;
-		}
 	}
 
 	void Rotate(float dTime) {
@@ -139,7 +131,6 @@ class Engine : public olc::PixelGameEngine {
 	std::vector<olc::Decal*> sprites;
 
 	Bird bird;
-	olc::Pixel tint;
 	Scenery background;
 	Scenery ground;
 
@@ -170,20 +161,18 @@ public:
 			new olc::Decal(new olc::Sprite("./Images/bird2.png")),
 			new olc::Decal(new olc::Sprite("./Images/bird1.png"))
 		};
+		
+		pipe_w = scale * pipeImg_Down->sprite->width;
+		pipe_h = scale * pipeImg_Down->sprite->height;
+		bird_w = scale * sprites[0]->sprite->width;
+		bird_h = scale * sprites[0]->sprite->height;
 
-		//Tint is temp
-		tint = *new olc::Pixel(255, 255, 255);
-
-		bird = { 50.0f, 80.0f, sprites };
+		bird = { ((screen_w / 2.f) - (2.f * bird_w)), (screen_h - 125)/ 2.f, sprites };
 		background = { 0.0f, 20.0f };
 		ground = { 0.0f, 220.0f };
 
 		pipeList.push_back(Pipe{ (float)screen_w, RandomY });
 
-		pipe_w = scale * pipeImg_Down->sprite->width;
-		pipe_h = scale * pipeImg_Down->sprite->height;
-		bird_w = scale * sprites[0]->sprite->width;
-		bird_h = scale * sprites[0]->sprite->height;
 
 		mask_PipeImg_Down = GetMask(pipeImg_Down->sprite);
 		mask_PipeImg_Up = GetMask(pipeImg_Up->sprite);
@@ -226,17 +215,7 @@ public:
 		PipeOffScreen();
 
 		Collision();
-		//Temp
-		if (bird.collide) {
-			tint.r = 255;
-			tint.g = 0;
-			tint.b = 0;
-		}
-		else {
-			tint.r = 255;
-			tint.g = 255;
-			tint.b = 255;
-		}
+		GameOver();
 	}
 
 
@@ -415,6 +394,17 @@ public:
 		return rotated_mask;
 	}
 
+	void GameOver() {
+		if (bird.collide) {
+			bird.vel = 0;
+			bird.y = (screen_h - 125) / 2.f;
+			bird.angle = 0;
+			pipeList.clear();
+			pipeList.push_back(Pipe{ (float)screen_w, RandomY });
+			score = 0;
+		}
+	}
+
 	//###################################################################################################################################
 
 	void Draw(float dTime) {
@@ -433,17 +423,23 @@ public:
 			DrawDecal({ x, (y - screen_h) }, pipeImg_Up, { scale,scale });
 		}
 
-		//float x1 = (abs(cos(bird.angle)) * (bird_w / (2.0f))) - (abs(sin(bird.angle)) * (-bird_h / (2.0f)));
-		//float y1 = (abs(sin(bird.angle)) * (-bird_w / (2.0f))) + (abs(cos(bird.angle)) * (-bird_h / (2.0f)));
-
-		//FillRectDecal({ round(bird.x + (bird_w / 2) - x1), round(bird.y + (bird_h / 2) + y1) }, { abs(x1 + x1), abs(y1 + y1) }, *new olc::Pixel(255, 0, 125, 155));
-		DrawRotatedDecal({ round(bird.x + (bird_w / 2)), round(bird.y + (bird_h / 2)) }, bird.Animate(dTime), bird.angle, { bird_w / (2.0f * scale), bird_h / (2.0f * scale) }, { scale,scale }, tint);
+		DrawRotatedDecal({ round(bird.x + (bird_w / 2)), round(bird.y + (bird_h / 2)) }, bird.Animate(dTime), bird.angle, { bird_w / (2.0f * scale), bird_h / (2.0f * scale) }, { scale,scale });
 
 		DrawDecal({ g_x, 675 }, ground_image, { scale,scale });
 		DrawDecal({ g_x + screen_w, 675 }, ground_image, { scale,scale });
 
 		DrawStringDecal({ TextCenter() - 3, 103 }, std::to_string(score), olc::BLACK, { 3.01f * scale, 4.1f * scale });
 		DrawStringDecal({ TextCenter(), 100 }, std::to_string(score), olc::WHITE, { 3 * scale, 4 * scale });
+	}
+
+
+	float TextCenter() {
+		int digit = 0;
+
+		for (char i : std::to_string(score)) {
+			digit++;
+		}
+		return ((screen_w - digit * (8 * 3 * scale)) / 2.f);
 	}
 
 
@@ -456,16 +452,6 @@ public:
 		std::memcpy(&value, buffer, 8);
 
 		return value;
-	}
-
-
-	float TextCenter() {
-		int digit = 0;
-
-		for (char i : std::to_string(score)) {
-			digit++;
-		}
-		return ((screen_w - digit * (8 * 3 * scale)) / 2.f);
 	}
 };
 
