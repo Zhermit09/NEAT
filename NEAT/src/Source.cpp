@@ -84,7 +84,7 @@ struct Bird {
 
 	}
 	void Jump() {
-		vel = -1.67;
+		vel = -1.67f;
 		height = y - bird_h / 4;
 	}
 };
