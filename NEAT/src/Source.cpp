@@ -1,5 +1,7 @@
 #define OLC_PGE_APPLICATION
+#define NEAT_AI_NEURALNETWORK
 #include "olcPixelGameEngine.h"
+#include "neat.h"
 #include <Windows.h>
 #include <Bcrypt.h>
 #pragma comment(lib, "bcrypt.lib")
@@ -459,6 +461,9 @@ public:
 int main()
 {
 	int pixelSize = 1;
+
+	neat::InNeuron n = {50};
+	std::cout << n.get();
 
 	Engine engine;
 	if (engine.Construct(screen_w, screen_h, pixelSize, pixelSize)) {
