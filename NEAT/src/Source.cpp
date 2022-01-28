@@ -462,8 +462,8 @@ int main()
 {
 	int pixelSize = 1;
 
-	neat::InNeuron n = {50};
-	std::cout << n.get();
+	neat::InNeuron n = {0.8};
+	std::cout << std::setprecision(15)<< n.get();
 
 	Engine engine;
 	if (engine.Construct(screen_w, screen_h, pixelSize, pixelSize)) {
@@ -472,5 +472,3 @@ int main()
 
 	return 0;
 }
-
-
