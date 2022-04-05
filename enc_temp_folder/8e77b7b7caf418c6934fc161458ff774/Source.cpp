@@ -460,7 +460,10 @@ int main()
 	int pixelSize = 1;
 
 	neat::Network* n = new neat::Network();
+	//neat::Neuron n1 = { {1.7,6.3,8.5}, 1 };
+	//neat::Neuron n2 = { {8.5,8.3,5.5}, 15 };
 
+	//neat::Network net = {};
 	std::cout << 1;
 	/*Engine engine; {
 

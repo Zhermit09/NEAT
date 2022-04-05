@@ -68,7 +68,7 @@ namespace neat {
 
 	struct Network {
 
-		std::vector<Layer*> layers;
+		std::vector<Layer*> allLayers;
 		Network() {
 			for (int i = 0; i < 3; i++) {
 				allLayers.push_back(new Layer());
