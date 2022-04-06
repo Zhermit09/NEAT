@@ -7,7 +7,6 @@
 //#define exp 2.71828182845904523536028747135266249775724709369995957496696762772407663035354759457138217852516642742746639193200305992181741359662
 
 #pragma once 
-	
 int64_t Random();
 
 #ifdef NEAT_AI_NEURALNETWORK
@@ -71,7 +70,7 @@ namespace neat {
 		std::vector<Layer*> layers;
 		Network() {
 			for (int i = 0; i < 3; i++) {
-				allLayers.push_back(new Layer());
+				layers.push_back(new Layer());
 			}
 		}
 	};
