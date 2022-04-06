@@ -67,7 +67,7 @@ struct Bird {
 	}
 
 
-	void Gravity(float dTime) {
+	int Gravity(float dTime) {
 		if (dTime > 0.2f) { dTime = 0.2f; }
 
 		s = 300 * vel * dTime;
@@ -78,9 +78,10 @@ struct Bird {
 		}
 
 		y += s;
+		return 0;
 	}
 
-	void Rotate(float dTime) {
+	int Rotate(float dTime) {
 		float maxRotation = -27.0f * degrees;
 		float rotVel = 0.8f * degrees;
 
@@ -94,11 +95,12 @@ struct Bird {
 		else if ((90 * degrees) < angle) {
 			angle = 90 * degrees;
 		}
-
+		return 0;
 	}
-	void Jump() {
+	int Jump() {
 		vel = -1.67f;
 		height = y - bird_h / 4;
+		return 0;
 	}
 };
 
@@ -109,15 +111,17 @@ struct Pipe {
 	bool newPipe = true;
 	bool hasNotScored = true;
 
-	void Move(float dTime) {
+	int Move(float dTime) {
 		x -= 220.0f * (dTime);
+		return 0;
 	}
 
-	void Score(float birdX) {
+	int Score(float birdX) {
 		if (x < birdX and hasNotScored) {
 			score++;
 			hasNotScored = false;
 		}
+		return 0;
 	}
 };
 
@@ -126,11 +130,12 @@ struct Scenery {
 	float x{};
 	float speed{};
 
-	void Move(float dTime) {
+	int Move(float dTime) {
 		x -= speed * dTime;
 		if (x < -screen_w) {
 			x = 0.0f;
 		}
+		return 0;
 	}
 };
 
@@ -199,7 +204,7 @@ public:
 
 	//###################################################################################################################################
 
-	void Actions(float dTime) {
+	int Actions(float dTime) {
 
 		if (game_loop) {
 
@@ -225,10 +230,12 @@ public:
 
 		Collision();
 		GameOver();
+
+		return 0;
 	}
 
 
-	void NewPossiblePipe() {
+	int NewPossiblePipe() {
 		Pipe pipe = pipeList.front();
 
 		if (pipe.x < (screen_w / 2) && (pipe.newPipe == true)) {
@@ -237,17 +244,19 @@ public:
 			//Must get new front pipe after push_back()
 			pipeList.front().newPipe = false;
 		}
+		return 0;
 	}
 
 
-	void PipeOffScreen() {
+	int PipeOffScreen() {
 		if (pipeList.front().x < -pipe_w) {
 			pipeList.erase(pipeList.begin());
 		}
+		return 0;
 	}
 
 
-	void DevTools(float dTime) {             //some tools
+	int DevTools(float dTime) {             //some tools
 		float speed = 100.0f * dTime;
 
 		if (GetKey(olc::Key::UP).bHeld) {
@@ -285,10 +294,11 @@ public:
 		else if (GetKey(olc::Key::Q).bHeld) {
 			bird.angle += 25 * degrees * 40 * (dTime);
 		}
+		return 0;
 	}
 
 
-	void Collision() {
+	int Collision() {
 		bird.collide = false;
 
 		float x = (abs(cos(bird.angle)) * (bird_w / (2.0f))) - (abs(sin(bird.angle)) * (-bird_h / (2.0f)));
@@ -305,7 +315,7 @@ public:
 		if ((by + abs(y + y)) > 675) {
 			mask_Bird = RotateBirdMask();
 			PixelPerfect(mask_Ground, mask_Bird, (675 - (int)by), 0);
-			if (bird.collide) return;
+			if (bird.collide) return 0;
 		}
 
 
@@ -320,20 +330,21 @@ public:
 				}
 
 				PixelPerfect(mask_PipeImg_Down, mask_Bird, (int)round(pipe.y) - (int)round(by), (int)round(pipe.x) - (int)round(bx));
-				if (bird.collide) return;
+				if (bird.collide) return 0;
 				PixelPerfect(mask_PipeImg_Up, mask_Bird, (int)round(pipe.y - screen_h) - (int)round(by), (int)round(pipe.x) - (int)round(bx));
-				if (bird.collide) return;
+				if (bird.collide) return 0;
 				if ((by < 0) and (bx < px + pipe_w - 2 * scale) and ((px + 2 * scale) < (bx + abs(x + x)))) {
 					bird.collide = true;
-					return;
+					return 0;
 				}
 
 			}
 		}
+		return 0;
 	}
 
 
-	void PixelPerfect(std::vector<std::vector<bool>> mask, std::vector<std::vector<bool>> mask_Bird, int dY, int dX) {
+	int PixelPerfect(std::vector<std::vector<bool>> mask, std::vector<std::vector<bool>> mask_Bird, int dY, int dX) {
 
 		int _y = std::max(0, -dY);
 		int h = std::min((int)mask.size(), (int)(mask_Bird.size() - dY));
@@ -346,7 +357,7 @@ public:
 				for (int x = _x; x < w; x++) {
 					if (mask_Bird[y + dY][x + dX] and mask[y][x]) {
 						bird.collide = true;
-						return;
+						return 0;
 					}
 					else {
 						bird.collide = false;
@@ -354,6 +365,7 @@ public:
 				}
 			}
 		}
+		return 0;
 	}
 
 
@@ -403,7 +415,7 @@ public:
 		return rotated_mask;
 	}
 
-	void GameOver() {
+	int GameOver() {
 		if (bird.collide) {
 			bird.vel = 0;
 			bird.y = (screen_h - 125) / 2.f;
@@ -412,11 +424,12 @@ public:
 			pipeList.push_back(Pipe{ (float)screen_w, RandomY });
 			score = 0;
 		}
+		return 0;
 	}
 
 	//###################################################################################################################################
 
-	void Draw(float dTime) {
+	int Draw(float dTime) {
 
 		float bg_x = round(background.x);
 		float g_x = round(ground.x);
@@ -439,6 +452,7 @@ public:
 
 		DrawStringDecal({ TextCenter() - 3, 103 }, std::to_string(score), olc::BLACK, { 3.01f * scale, 4.1f * scale });
 		DrawStringDecal({ TextCenter(), 100 }, std::to_string(score), olc::WHITE, { 3 * scale, 4 * scale });
+		return 0;
 	}
 
 
@@ -461,14 +475,14 @@ int main()
 
 	neat::Network* n = new neat::Network();
 
-	std::cout << 1;
+	//neat::Network::inputs = ;
+	neat::Network::ActivateNetwork(neat::Num_Of_Inputs, 24.0, 234.9, 39734.34545, 39.0, 65.0, 9999.0);
 	/*Engine engine; {
 
 		//std::cout<<std::to_string(abs(engine.Random())).length()<<std::endl;
 		if (engine.Construct(screen_w, screen_h, pixelSize, pixelSize)) {
 			engine.Start();
 		}
-
 		return 0;
 	}*/
 }

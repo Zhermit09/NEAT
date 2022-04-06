@@ -2,7 +2,8 @@
 #include <vector>
 #include <numeric>
 #include <string>
-#define digits (std::to_string(abs(random)).length())
+#include <cstdarg>
+#define numOfDigits (std::to_string(abs(random)).length())
 #define divide (random / (double)(pow(10.0, exp)))
 //#define exp 2.71828182845904523536028747135266249775724709369995957496696762772407663035354759457138217852516642742746639193200305992181741359662
 
@@ -13,13 +14,43 @@ int64_t Random();
 #define NEAT_AI_NEURALNETWORK
 
 namespace neat {
+	//           SETTINGS
+	//------------------------------
+
+	//# Network parameters
+	const int Hidden_Layers = 1;
+
+	//       # Neurons
+	const int Num_Of_Inputs = 6;
+	const int Num_Of_Hidden = 3;
+	const int Num_Of_Outputs = 1;
+
+	//# Wheight options
+	const int Wheight_Range_Value = 30;
+	//const int Wheight_Min_Value = -30;
+
+	//# Bias options
+	const int Bias_Range_Value = 30;
+	//const int Bias_Min_Value = -30;
+
+	//------------------------------
+
+	double RandomDigits(int mod) {
+
+		int64_t random = Random();
+		double exp = (double)numOfDigits;
+		double decimals = divide;
+
+		return (Random() % mod) + decimals;
+
+	}
 
 	struct Neuron {
 		std::vector<double> wheights;
 		double bias{};
-		double value{};
+		long double value{};
 
-		Neuron() {
+		/*Neuron() {
 			int64_t random;
 			double exp;
 
@@ -34,32 +65,31 @@ namespace neat {
 			bias = random / (double)(pow(10.0, exp - 1));
 
 			value = 0;
-		}
+		}*/
 
 
 		double ActFunction(double x) {
-			double n = tanh(x);
-
-			//std::string s = std::to_string(n);
-
-			return n;
+			return tanh(x);
 		}
 
-		/*double SumOfAll(std::vector<double> m1, std::vector<double> m2) {
+		int Value(std::vector<double> m1, std::vector<double> m2) {
+
 			double sum = 0;
 
-			for (int i = 0;i < m1.size(); i++) {
+			for (int i = 0; i < m1.size(); i++) {
 				sum += m1[i] * m2[i];
 			}
-			value = Sigmoid(sum + bias);
-		}*/
+			value = ActFunction(sum + bias);
+			return 0;
+		}
 	};
 
 	struct Layer {
 
 		std::vector<Neuron*> neurons;
-		Layer() {
-			for (int i = 0; i < 3; i++) {
+
+		Layer(int count) {
+			for (int i = 0; i < count; i++) {
 				neurons.push_back(new Neuron());
 			}
 		}
@@ -68,10 +98,59 @@ namespace neat {
 	struct Network {
 
 		std::vector<Layer*> layers;
+
 		Network() {
-			for (int i = 0; i < 3; i++) {
-				layers.push_back(new Layer());
+			CreateNeurons();
+			FirstConnect();
+		}
+
+		int CreateNeurons() {
+
+			layers.push_back(new Layer(Num_Of_Inputs));
+
+			for (int i = 0; i < Hidden_Layers; i++) {
+				layers.push_back(new Layer(Num_Of_Hidden));
 			}
+
+			layers.push_back(new Layer(Num_Of_Outputs));
+
+			return 0;
+		}
+
+		int FirstConnect() {
+
+			auto inputNeurons = layers[0]->neurons;
+			for (int i = 0; i < inputNeurons.size(); i++) {
+				inputNeurons[i]->wheights.push_back(1);
+			}
+
+
+			for (int i = 1; i < layers.size(); i++) {
+
+				auto neurons = layers[i]->neurons;
+				auto prevNeurons = layers[i - 1]->neurons;
+				for (int j = 0; j < neurons.size(); j++) {
+
+					for (int g = 0; g < prevNeurons.size(); g++) {
+						neurons[j]->wheights.push_back(RandomDigits(Wheight_Range_Value));
+					}
+					neurons[j]->bias = RandomDigits(Bias_Range_Value);
+				}
+			}
+			return 0;
+		}
+
+		static int ActivateNetwork(int count, ...) {
+			va_list args;
+			va_start(args, count);
+
+
+			for (int i = 0; i < Num_Of_Inputs; i++)
+			{
+				std::cout << va_arg(args, double) << "\n";
+			}
+			va_end(args);
+			return 0;
 		}
 	};
 }
