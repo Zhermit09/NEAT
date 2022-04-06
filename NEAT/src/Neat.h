@@ -22,7 +22,7 @@ namespace neat {
 
 	//       # Neurons
 	const int Num_Of_Inputs = 6;
-	const int Num_Of_Hidden = 3;
+	const int Num_Of_Hidden = 1;
 	const int Num_Of_Outputs = 1;
 
 	//# Wheight options
@@ -93,6 +93,28 @@ namespace neat {
 				neurons.push_back(new Neuron());
 			}
 		}
+
+		int InputLayer() {
+
+			for (int i = 0; i < neurons.size(); i++) {
+				neurons[i]->wheights.push_back(1);
+			}
+
+			return 0;
+		}
+
+		int ConnectLayer(int size) {
+
+			for (int i = 0; i < neurons.size(); i++) {
+
+				for (int j = 0; j < size; j++) {
+					neurons[i]->wheights.push_back(RandomDigits(Wheight_Range_Value));
+				}
+				neurons[i]->bias = RandomDigits(Bias_Range_Value);	
+			}
+
+			return 0;
+		}
 	};
 
 	struct Network {
@@ -119,39 +141,48 @@ namespace neat {
 
 		int FirstConnect() {
 
-			auto inputNeurons = layers[0]->neurons;
-			for (int i = 0; i < inputNeurons.size(); i++) {
-				inputNeurons[i]->wheights.push_back(1);
-			}
-
+			layers[0]->InputLayer();
 
 			for (int i = 1; i < layers.size(); i++) {
 
-				auto neurons = layers[i]->neurons;
-				auto prevNeurons = layers[i - 1]->neurons;
-				for (int j = 0; j < neurons.size(); j++) {
-
-					for (int g = 0; g < prevNeurons.size(); g++) {
-						neurons[j]->wheights.push_back(RandomDigits(Wheight_Range_Value));
-					}
-					neurons[j]->bias = RandomDigits(Bias_Range_Value);
-				}
+				layers[i]->ConnectLayer(layers[i - 1]->neurons.size());
 			}
 			return 0;
 		}
 
-		static int ActivateNetwork(int count, ...) {
+		static int ActivateNetwork(std::vector<double> inputs) {
+			try {
+				if (inputs.size() != Num_Of_Inputs) {
+					throw std::runtime_error("ERROR: Wrong amout of inputs, ");
+				}
+			}
+			catch (std::runtime_error e) {
+				std::cout << e.what() << "Expected " << Num_Of_Inputs << " inputs, got " << inputs.size() << "\n";
+				exit(1);
+
+			}
+
+			for (int i = 0; i < Num_Of_Inputs; i++)
+			{
+				std::cout << inputs[i] << "\n";
+			}
+
+			return 0;
+		}
+
+		/*static int ActivateNetwork(int count, ...) {
 			va_list args;
 			va_start(args, count);
-
 
 			for (int i = 0; i < Num_Of_Inputs; i++)
 			{
 				std::cout << va_arg(args, double) << "\n";
 			}
+
 			va_end(args);
 			return 0;
-		}
+		}*/
+
 	};
 }
 #endif

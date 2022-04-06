@@ -475,8 +475,11 @@ int main()
 
 	neat::Network* n = new neat::Network();
 
-	//neat::Network::inputs = ;
-	neat::Network::ActivateNetwork(neat::Num_Of_Inputs, 24.0, 234.9, 39734.34545, 39.0, 65.0, 9999.0);
+
+	//neat::Network::ActivateNetwork(neat::Num_Of_Inputs, 24.0, 234.9, 39734.34545, 39.0, 65.0, 9999.0);
+
+
+	neat::Network::ActivateNetwork({ 24, 234.9, 39734.34545, 39,  4, 9999});
 	/*Engine engine; {
 
 		//std::cout<<std::to_string(abs(engine.Random())).length()<<std::endl;
