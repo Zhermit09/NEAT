@@ -158,6 +158,8 @@ class Engine : public olc::PixelGameEngine {
 	std::vector<std::vector<bool>> mask_PipeImg_Up;
 	std::vector<std::vector<bool>> mask_Ground;
 
+	neat::Network* firstAi;
+
 public:
 	Engine() {
 		sAppName = "Flappy Bird NEAT";
@@ -192,19 +194,21 @@ public:
 		mask_PipeImg_Up = GetMask(pipeImg_Up->sprite);
 		mask_Ground = GetMask(ground_image->sprite);
 
+		firstAi = new neat::Network();
+
 		return true;
 	}
 
 
 	bool OnUserUpdate(float dTime) override {
-		Actions(dTime);
+		GameLoop(dTime);
 		Draw(dTime);
 		return true;
 	}
 
 	//###################################################################################################################################
 
-	int Actions(float dTime) {
+	int GameLoop(float dTime) {
 
 		if (game_loop) {
 
@@ -225,6 +229,8 @@ public:
 		t += dTime;
 		//
 
+		AiTest();
+
 		NewPossiblePipe();
 		PipeOffScreen();
 
@@ -234,6 +240,34 @@ public:
 		return 0;
 	}
 
+	int AiTest() {
+		Pipe pipe;
+
+		for (Pipe& pip : pipeList) {
+			pipe = pip;
+			if (pipe.hasNotScored == true) {
+				break;
+			}
+		}
+		if (game_loop) {
+			auto result = firstAi->ActivateNetwork({ bird.bx, bird.by, pipe.x, pipe.y, pipe.x, pipe.y - 161 });
+			std::cout << "\n" << "\n";
+			for (int i = 0; i < result.size(); i++)
+			{
+
+				std::cout << result[i] << "\t";
+
+				if (result[i] > 0.5) {
+					bird.Jump();
+				}
+			}
+			std::cout << "\n\n\n";
+		}
+
+		if (score > 0)game_loop = false;
+
+		return 0;
+	}
 
 	int NewPossiblePipe() {
 		Pipe pipe = pipeList.front();
@@ -423,6 +457,7 @@ public:
 			pipeList.clear();
 			pipeList.push_back(Pipe{ (float)screen_w, RandomY });
 			score = 0;
+			firstAi = new neat::Network();
 		}
 		return 0;
 	}
@@ -452,6 +487,10 @@ public:
 
 		DrawStringDecal({ TextCenter() - 3, 103 }, std::to_string(score), olc::BLACK, { 3.01f * scale, 4.1f * scale });
 		DrawStringDecal({ TextCenter(), 100 }, std::to_string(score), olc::WHITE, { 3 * scale, 4 * scale });
+
+		//DrawCircle({ (int)round(pipeList[0].x) , (int)round(pipeList[0].y) }, 1, olc::RED);
+		//DrawCircle({ (int)round(pipeList[0].x) , (int)round(pipeList[0].y-161) }, 1, olc::RED);
+
 		return 0;
 	}
 
@@ -473,19 +512,11 @@ int main()
 {
 	int pixelSize = 1;
 
-	neat::Network* n = new neat::Network();
+	Engine engine; {
 
-
-	//neat::Network::ActivateNetwork(neat::Num_Of_Inputs, 24.0, 234.9, 39734.34545, 39.0, 65.0, 9999.0);
-
-
-	neat::Network::ActivateNetwork({ 24, 234.9, 39734.34545, 39,  4, 9999});
-	/*Engine engine; {
-
-		//std::cout<<std::to_string(abs(engine.Random())).length()<<std::endl;
 		if (engine.Construct(screen_w, screen_h, pixelSize, pixelSize)) {
 			engine.Start();
 		}
 		return 0;
-	}*/
+	}
 }

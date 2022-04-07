@@ -20,9 +20,8 @@ namespace neat {
 	//# Network parameters
 	const int Hidden_Layers = 1;
 
-	//       # Neurons
 	const int Num_Of_Inputs = 6;
-	const int Num_Of_Hidden = 1;
+	const int Num_Of_Hidden = 3;
 	const int Num_Of_Outputs = 1;
 
 	//# Wheight options
@@ -50,34 +49,17 @@ namespace neat {
 		double bias{};
 		long double value{};
 
-		/*Neuron() {
-			int64_t random;
-			double exp;
-
-			for (int i = 0; i < 3; i++) {
-				random = Random();
-				exp = (double)digits;
-				wheights.push_back(divide);
-			}
-
-			random = Random();
-			exp = (double)digits;
-			bias = random / (double)(pow(10.0, exp - 1));
-
-			value = 0;
-		}*/
-
-
 		double ActFunction(double x) {
 			return tanh(x);
 		}
 
-		int Value(std::vector<double> m1, std::vector<double> m2) {
+		int MakeValue(std::vector<double> inputs) {
 
 			double sum = 0;
 
-			for (int i = 0; i < m1.size(); i++) {
-				sum += m1[i] * m2[i];
+			for (int i = 0; i < inputs.size(); i++) {
+				sum += inputs[i] * wheights[i];
+				std::cout<<inputs[i] * wheights[i]<<"           ";
 			}
 			value = ActFunction(sum + bias);
 			return 0;
@@ -110,7 +92,39 @@ namespace neat {
 				for (int j = 0; j < size; j++) {
 					neurons[i]->wheights.push_back(RandomDigits(Wheight_Range_Value));
 				}
-				neurons[i]->bias = RandomDigits(Bias_Range_Value);	
+				neurons[i]->bias = RandomDigits(Bias_Range_Value);
+			}
+
+			return 0;
+		}
+		
+		int CalculateInputValues(std::vector<double> inputs) {
+
+			for (int i = 0; i < neurons.size(); i++) {
+
+				neurons[i]->MakeValue({ inputs[i] });
+				std::cout << "\n";
+			}
+
+			return 0;
+		}
+
+		std::vector<double> GetValues() {
+
+			std::vector<double> values;
+
+			for (int i = 0; i < neurons.size(); i++) {
+				values.push_back(neurons[i]->value);
+			}
+			return values;
+		}
+		
+
+		int CalculateValues(std::vector<double> inputs) {
+
+			for (int i = 0; i < neurons.size(); i++) {
+				neurons[i]->MakeValue(inputs);
+				std::cout << "\n";
 			}
 
 			return 0;
@@ -145,29 +159,40 @@ namespace neat {
 
 			for (int i = 1; i < layers.size(); i++) {
 
-				layers[i]->ConnectLayer(layers[i - 1]->neurons.size());
+				layers[i]->ConnectLayer((int)layers[i - 1]->neurons.size());
 			}
 			return 0;
 		}
 
-		static int ActivateNetwork(std::vector<double> inputs) {
+		std::vector<double> ActivateNetwork(std::vector<double> inputs) {
 			try {
 				if (inputs.size() != Num_Of_Inputs) {
-					throw std::runtime_error("ERROR: Wrong amout of inputs, ");
+					throw std::runtime_error("ERROR: Wrong amout of inputs for network");
 				}
 			}
 			catch (std::runtime_error e) {
-				std::cout << e.what() << "Expected " << Num_Of_Inputs << " inputs, got " << inputs.size() << "\n";
+				std::cout << e.what() << ", Expected " << Num_Of_Inputs << " inputs, got " << inputs.size() << "\n";
 				exit(1);
 
 			}
 
-			for (int i = 0; i < Num_Of_Inputs; i++)
+			layers[0]->CalculateInputValues(inputs);
+			std::cout << "\n";
+
+			for (int i = 1; i < layers.size(); i++)
 			{
-				std::cout << inputs[i] << "\n";
+				layers[i]->CalculateValues(layers[i-1]->GetValues());
+				std::cout << "\n";
 			}
 
-			return 0;
+			auto neurons = layers.back()->neurons;
+			std::vector<double> result;
+			for (int i = 0; i < neurons.size(); i++)
+			{
+				result.push_back(neurons[i]->value);
+			}
+
+			return result;
 		}
 
 		/*static int ActivateNetwork(int count, ...) {
