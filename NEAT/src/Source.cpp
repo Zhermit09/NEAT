@@ -18,9 +18,8 @@ int bird_w;
 int bird_h;
 
 int score = 0;
-bool game_loop = false;
-float degrees = PI / 180;
-float t = 0.0f;
+bool game_loop = false;  //can prob remove it as global later
+
 
 int64_t Random() {
 	int64_t value;
@@ -48,10 +47,9 @@ struct Bird {
 	bool collide{};
 
 	float s{};
-	float height{};
+	float jumpY{};
 	float angle{};
 
-	//by is currently not needed
 	float bx{};
 	float by{};
 
@@ -61,45 +59,43 @@ struct Bird {
 		if (animationTime >= (5.0 * frameTime)) {
 			animationTime = 0.0;
 		}
-
-		current = sprites[(int)(animationTime / frameTime)]->sprite;
-		return sprites[(int)(animationTime / frameTime)];
+		olc::Decal* frame = sprites[(int)(animationTime / frameTime)];
+		current = frame->sprite;
+		return frame;
 	}
 
 
 	int Gravity(float dTime) {
-		if (dTime > 0.2f) { dTime = 0.2f; }
-
+		//height = y - bird_h / 4;;
 		s = 300 * vel * dTime;
 		vel += (g / 2) * dTime;
 
-		if (s > 3.7) {
-			s = 3.7f;
-		}
+		//Removed distance limmit
 
 		y += s;
 		return 0;
 	}
 
 	int Rotate(float dTime) {
-		float maxRotation = -27.0f * degrees;
+		float degrees = PI / 180;
+		float startAngle = -27.0f * degrees;
 		float rotVel = 0.8f * degrees;
 
-		if (height < y) {
+		if (jumpY < y) {
 			angle += rotVel * 400 * (dTime);
 		}
 
-		if (s < 0) {
-			angle = maxRotation;
-		}
-		else if ((90 * degrees) < angle) {
+		if (angle > (90 * degrees)) {
 			angle = 90 * degrees;
+		}
+		else if (s < 0) {
+			angle = startAngle;
 		}
 		return 0;
 	}
 	int Jump() {
 		vel = -1.67f;
-		height = y - bird_h / 4;
+		jumpY = y - bird_h / 3;
 		return 0;
 	}
 };
@@ -180,9 +176,9 @@ public:
 		};
 
 		pipe_w = scale * pipeImg_Down->sprite->width;
-		pipe_h = scale * pipeImg_Down->sprite->height;
+		pipe_h = scale * pipeImg_Down->sprite->jumpY;
 		bird_w = scale * sprites[0]->sprite->width;
-		bird_h = scale * sprites[0]->sprite->height;
+		bird_h = scale * sprites[0]->sprite->jumpY;
 
 		bird = { ((screen_w / 2.f) - (2.f * bird_w)), (screen_h - 125) / 2.f, sprites };
 		background = { 0.0f, 20.0f };
@@ -224,12 +220,9 @@ public:
 		ground.Move(dTime);
 		background.Move(dTime);
 
-		//Tools
 		DevTools(dTime);
-		t += dTime;
-		//
 
-		AiTest();
+		//AiTest();
 
 		NewPossiblePipe();
 		PipeOffScreen();
@@ -251,17 +244,17 @@ public:
 		}
 		if (game_loop) {
 			auto result = firstAi->ActivateNetwork({ bird.bx, bird.by, pipe.x, pipe.y, pipe.x, pipe.y - 161 });
-			std::cout << "\n" << "\n";
+			//std::cout << "\n" << "\n";
 			for (int i = 0; i < result.size(); i++)
 			{
 
-				std::cout << result[i] << "\t";
+				//std::cout << result[i] << "\t";
 
-				if (result[i] > 0.5) {
+				if (result[i] > 0) {
 					bird.Jump();
 				}
 			}
-			std::cout << "\n\n\n";
+			//std::cout << "\n\n\n";
 		}
 
 		if (score > 0)game_loop = false;
@@ -292,6 +285,7 @@ public:
 
 	int DevTools(float dTime) {             //some tools
 		float speed = 100.0f * dTime;
+		float degrees = PI / 180;
 
 		if (GetKey(olc::Key::UP).bHeld) {
 			bird.y -= speed;
@@ -323,10 +317,10 @@ public:
 			}
 		}
 		else if (GetKey(olc::Key::E).bHeld) {
-			bird.angle += -25 * degrees * 40 * (dTime);
+			bird.angle += -25 * degrees * 10 * (dTime);
 		}
 		else if (GetKey(olc::Key::Q).bHeld) {
-			bird.angle += 25 * degrees * 40 * (dTime);
+			bird.angle += 25 * degrees * 10 * (dTime);
 		}
 		return 0;
 	}
@@ -405,7 +399,7 @@ public:
 
 	std::vector<std::vector<bool>> GetMask(olc::Sprite* sprite) {
 
-		const int h = sprite->height * scale;
+		const int h = sprite->jumpY * scale;
 		const int w = sprite->width * scale;
 
 		std::vector<std::vector<bool>> mask(h, std::vector<bool>(w, false));
@@ -505,7 +499,6 @@ public:
 	}
 
 };
-
 
 
 int main()

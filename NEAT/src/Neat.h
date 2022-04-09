@@ -3,8 +3,6 @@
 #include <numeric>
 #include <string>
 #include <cstdarg>
-#define numOfDigits (std::to_string(abs(random)).length())
-#define divide (random / (double)(pow(10.0, exp)))
 //#define exp 2.71828182845904523536028747135266249775724709369995957496696762772407663035354759457138217852516642742746639193200305992181741359662
 
 #pragma once 
@@ -14,40 +12,37 @@ int64_t Random();
 #define NEAT_AI_NEURALNETWORK
 
 namespace neat {
-	//           SETTINGS
-	//------------------------------
+
+	//----------SETTINGS----------
 
 	//# Network parameters
-	const int Hidden_Layers = 1;
+	const int Hidden_Layers = 10;
 
 	const int Num_Of_Inputs = 6;
-	const int Num_Of_Hidden = 3;
+	const int Num_Of_Hidden = 30;
 	const int Num_Of_Outputs = 1;
 
 	//# Wheight options
 	const int Wheight_Range_Value = 30;
-	//const int Wheight_Min_Value = -30;
 
 	//# Bias options
 	const int Bias_Range_Value = 30;
-	//const int Bias_Min_Value = -30;
 
 	//------------------------------
 
 	double RandomDigits(int mod) {
 
 		int64_t random = Random();
-		double exp = (double)numOfDigits;
-		double decimals = divide;
+		double decimals = random / ((double)(pow(10, 19)));
 
-		return (Random() % mod) + decimals;
+		return (Random() % (mod-1)) + decimals;
 
 	}
 
 	struct Neuron {
 		std::vector<double> wheights;
 		double bias{};
-		long double value{};
+		double value{};
 
 		double ActFunction(double x) {
 			return tanh(x);
@@ -59,7 +54,7 @@ namespace neat {
 
 			for (int i = 0; i < inputs.size(); i++) {
 				sum += inputs[i] * wheights[i];
-				std::cout<<inputs[i] * wheights[i]<<"           ";
+				//std::cout<<inputs[i] * wheights[i]<<"       ";
 			}
 			value = ActFunction(sum + bias);
 			return 0;
@@ -70,13 +65,15 @@ namespace neat {
 
 		std::vector<Neuron*> neurons;
 
+
 		Layer(int count) {
 			for (int i = 0; i < count; i++) {
 				neurons.push_back(new Neuron());
 			}
 		}
 
-		int InputLayer() {
+
+		int ConnectInputLayer() {
 
 			for (int i = 0; i < neurons.size(); i++) {
 				neurons[i]->wheights.push_back(1);
@@ -84,6 +81,19 @@ namespace neat {
 
 			return 0;
 		}
+
+
+		int CalculateInputValues(std::vector<double> inputs) {
+
+			for (int i = 0; i < neurons.size(); i++) {
+
+				neurons[i]->MakeValue({ inputs[i] });
+				//std::cout << "\n";
+			}
+
+			return 0;
+		}
+
 
 		int ConnectLayer(int size) {
 
@@ -97,17 +107,18 @@ namespace neat {
 
 			return 0;
 		}
-		
-		int CalculateInputValues(std::vector<double> inputs) {
+
+
+		int CalculateValues(std::vector<double> inputs) {
 
 			for (int i = 0; i < neurons.size(); i++) {
-
-				neurons[i]->MakeValue({ inputs[i] });
-				std::cout << "\n";
+				neurons[i]->MakeValue(inputs);
+				//std::cout << "\n";
 			}
 
 			return 0;
 		}
+
 
 		std::vector<double> GetValues() {
 
@@ -117,17 +128,6 @@ namespace neat {
 				values.push_back(neurons[i]->value);
 			}
 			return values;
-		}
-		
-
-		int CalculateValues(std::vector<double> inputs) {
-
-			for (int i = 0; i < neurons.size(); i++) {
-				neurons[i]->MakeValue(inputs);
-				std::cout << "\n";
-			}
-
-			return 0;
 		}
 	};
 
@@ -155,7 +155,7 @@ namespace neat {
 
 		int FirstConnect() {
 
-			layers[0]->InputLayer();
+			layers[0]->ConnectInputLayer();
 
 			for (int i = 1; i < layers.size(); i++) {
 
@@ -177,12 +177,12 @@ namespace neat {
 			}
 
 			layers[0]->CalculateInputValues(inputs);
-			std::cout << "\n";
+			//std::cout << "\n";
 
 			for (int i = 1; i < layers.size(); i++)
 			{
 				layers[i]->CalculateValues(layers[i-1]->GetValues());
-				std::cout << "\n";
+				//std::cout << "\n";
 			}
 
 			auto neurons = layers.back()->neurons;
