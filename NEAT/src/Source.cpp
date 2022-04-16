@@ -64,9 +64,7 @@ struct Bird {
 		return frame;
 	}
 
-
 	int Gravity(float dTime) {
-		//height = y - bird_h / 4;;
 		s = 300 * vel * dTime;
 		vel += (g / 2) * dTime;
 
@@ -88,14 +86,14 @@ struct Bird {
 		if (angle > (90 * degrees)) {
 			angle = 90 * degrees;
 		}
-		else if (s < 0) {
-			angle = startAngle;
-		}
+
 		return 0;
 	}
+
 	int Jump() {
-		vel = -1.67f;
+		vel = -1.66f;
 		jumpY = y - bird_h / 3;
+		angle = -27.0f * PI / 180;
 		return 0;
 	}
 };
@@ -104,19 +102,9 @@ struct Bird {
 struct Pipe {
 	float x{};
 	float y{};
-	bool newPipe = true;
-	bool hasNotScored = true;
 
 	int Move(float dTime) {
 		x -= 220.0f * (dTime);
-		return 0;
-	}
-
-	int Score(float birdX) {
-		if (x < birdX and hasNotScored) {
-			score++;
-			hasNotScored = false;
-		}
 		return 0;
 	}
 };
@@ -137,7 +125,8 @@ struct Scenery {
 
 
 class Engine : public olc::PixelGameEngine {
-
+	int currentPipe;
+	int scorePipe;
 	std::vector<Pipe> pipeList;
 	std::vector<olc::Decal*> sprites;
 
@@ -154,7 +143,8 @@ class Engine : public olc::PixelGameEngine {
 	std::vector<std::vector<bool>> mask_PipeImg_Up;
 	std::vector<std::vector<bool>> mask_Ground;
 
-	neat::Network* firstAi;
+	//neat::Network* firstAi;
+	//neat::Net * no;
 
 public:
 	Engine() {
@@ -176,21 +166,24 @@ public:
 		};
 
 		pipe_w = scale * pipeImg_Down->sprite->width;
-		pipe_h = scale * pipeImg_Down->sprite->jumpY;
+		pipe_h = scale * pipeImg_Down->sprite->height;
 		bird_w = scale * sprites[0]->sprite->width;
-		bird_h = scale * sprites[0]->sprite->jumpY;
+		bird_h = scale * sprites[0]->sprite->height;
 
 		bird = { ((screen_w / 2.f) - (2.f * bird_w)), (screen_h - 125) / 2.f, sprites };
 		background = { 0.0f, 20.0f };
 		ground = { 0.0f, 220.0f };
 
 		pipeList.push_back(Pipe{ (float)screen_w, RandomY });
+		currentPipe = 0;
+		scorePipe = 0;
 
 		mask_PipeImg_Down = GetMask(pipeImg_Down->sprite);
 		mask_PipeImg_Up = GetMask(pipeImg_Up->sprite);
 		mask_Ground = GetMask(ground_image->sprite);
 
-		firstAi = new neat::Network();
+		//firstAi = new neat::Network();
+		//no = new neat::Net(neat::Genome());
 
 		return true;
 	}
@@ -213,7 +206,6 @@ public:
 
 			for (Pipe& pipe : pipeList) {
 				pipe.Move(dTime);
-				pipe.Score(bird.bx);
 			}
 		}
 
@@ -223,7 +215,7 @@ public:
 		DevTools(dTime);
 
 		//AiTest();
-
+		Score(bird.bx);
 		NewPossiblePipe();
 		PipeOffScreen();
 
@@ -234,26 +226,20 @@ public:
 	}
 
 	int AiTest() {
-		Pipe pipe;
+		Pipe pipe = pipeList[currentPipe];
 
-		for (Pipe& pip : pipeList) {
-			pipe = pip;
-			if (pipe.hasNotScored == true) {
-				break;
-			}
-		}
 		if (game_loop) {
-			auto result = firstAi->ActivateNetwork({ bird.bx, bird.by, pipe.x, pipe.y, pipe.x, pipe.y - 161 });
+			auto result = 0;//= no->Do({ bird.bx, bird.by, pipe.x, pipe.y, pipe.x, pipe.y - 161 });
 			//std::cout << "\n" << "\n";
-			for (int i = 0; i < result.size(); i++)
-			{
+			//for (int i = 0; i < result.size(); i++)
+			//{
 
 				//std::cout << result[i] << "\t";
 
-				if (result[i] > 0) {
-					bird.Jump();
-				}
+			if (result > 0.5) {
+				bird.Jump();
 			}
+			//}
 			//std::cout << "\n\n\n";
 		}
 
@@ -262,14 +248,22 @@ public:
 		return 0;
 	}
 
+
+	int Score(float birdX) {
+		if (pipeList[scorePipe].x < birdX) {
+			score++;
+			scorePipe += 1;
+		}
+		return 0;
+	}
+
+
 	int NewPossiblePipe() {
-		Pipe pipe = pipeList.front();
+		Pipe pipe = pipeList[currentPipe];
 
-		if (pipe.x < (screen_w / 2) && (pipe.newPipe == true)) {
+		if (pipe.x < (screen_w / 2)) {
 			pipeList.push_back(Pipe{ (pipe.x + pipe_w) + (screen_w / 2), RandomY });
-
-			//Must get new front pipe after push_back()
-			pipeList.front().newPipe = false;
+			currentPipe += 1;
 		}
 		return 0;
 	}
@@ -278,6 +272,8 @@ public:
 	int PipeOffScreen() {
 		if (pipeList.front().x < -pipe_w) {
 			pipeList.erase(pipeList.begin());
+			currentPipe -= 1;
+			scorePipe -= 1;
 		}
 		return 0;
 	}
@@ -399,7 +395,7 @@ public:
 
 	std::vector<std::vector<bool>> GetMask(olc::Sprite* sprite) {
 
-		const int h = sprite->jumpY * scale;
+		const int h = sprite->height * scale;
 		const int w = sprite->width * scale;
 
 		std::vector<std::vector<bool>> mask(h, std::vector<bool>(w, false));
@@ -443,6 +439,7 @@ public:
 		return rotated_mask;
 	}
 
+
 	int GameOver() {
 		if (bird.collide) {
 			bird.vel = 0;
@@ -451,7 +448,10 @@ public:
 			pipeList.clear();
 			pipeList.push_back(Pipe{ (float)screen_w, RandomY });
 			score = 0;
-			firstAi = new neat::Network();
+			currentPipe = 0;
+			scorePipe = 0;
+
+			//no = new neat::Net(neat::Genome());
 		}
 		return 0;
 	}
@@ -505,11 +505,14 @@ int main()
 {
 	int pixelSize = 1;
 
+	neat::NEAT*  g = new neat::NEAT();
+
+	/*
 	Engine engine; {
 
 		if (engine.Construct(screen_w, screen_h, pixelSize, pixelSize)) {
 			engine.Start();
 		}
 		return 0;
-	}
+	}*/
 }
