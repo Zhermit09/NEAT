@@ -9,7 +9,7 @@
 int64_t Random();
 
 #ifdef NEAT_AI_NEURALNETWORK
-#define NEAT_AI_NEURALNETWORK
+//#define NEAT_AI_NEURALNETWORK
 
 namespace neat {
 
@@ -18,12 +18,13 @@ namespace neat {
 	//# Network parameters
 	const int Num_Of_Inputs = 3;
 	const int Num_Of_Outputs = 1;
+	const int Population_Size = 500;
 
 	//# Wheight options
-	const int Wheight_Range_Value = 2;
+	const int Wheight_Range_Value = 9999;
 
 	//# Bias options
-	const int Bias_Range_Value = 2;
+	const int Bias_Range_Value = 9999;
 
 	//const int Hidden_Layers = 1;
 	//const int Num_Of_Hidden = 1;
@@ -35,7 +36,7 @@ namespace neat {
 		int64_t random = Random();
 		double decimals = random / ((double)(pow(10, 19)));
 
-		return (Random() % (mod - 1)) + decimals;
+		return (Random() % (mod)) + decimals;
 
 	}
 
@@ -203,11 +204,11 @@ namespace neat {
 
 	//----------------------------------------------------------------------------------------------------------
 
-
 	enum class Node_Type
 	{
 		Input, Output, Hidden
 	};
+
 
 	struct Node_Gene {
 
@@ -216,6 +217,7 @@ namespace neat {
 		double bias{};
 
 	};
+
 
 	struct Link_Gene
 	{
@@ -229,6 +231,7 @@ namespace neat {
 
 	};
 
+
 	struct Link_List {
 
 		std::vector<Link_Gene> list{};
@@ -238,7 +241,7 @@ namespace neat {
 		}
 
 
-		Link_Gene getInnov(Link_Gene obj) {
+		Link_Gene checkInnov(Link_Gene obj) {
 
 			for (int i = 0; i < list.size(); i++)
 			{
@@ -302,8 +305,8 @@ namespace neat {
 
 		Link_List* link_list{};
 
-		Genome(Link_List* link_list) {
-			this->link_list = link_list;
+		Genome(Link_List* list) {
+			link_list = list;
 			Init();
 		}
 
@@ -319,10 +322,10 @@ namespace neat {
 			for (int i = 0; i < Num_Of_Inputs + Num_Of_Outputs; i++)
 			{
 				if (i < Num_Of_Inputs) {
-					node_genes.push_back(Node_Gene(i + 1, Node_Type::Input, 0));
+					node_genes.push_back(Node_Gene(i + 1, Node_Type::Input, RandomDigits(Bias_Range_Value)));
 				}
 				else {
-					node_genes.push_back(Node_Gene(i + 1, Node_Type::Output, 0));
+					node_genes.push_back(Node_Gene(i + 1, Node_Type::Output, RandomDigits(Bias_Range_Value)));
 				}
 			}
 
@@ -332,12 +335,13 @@ namespace neat {
 		int LinkInit() {
 
 
-			for (Node_Gene node: node_genes)
+			for (Node_Gene node : node_genes)
 			{
 				if (node.type == Node_Type::Output) {
 					for (int i = 0; i < Num_Of_Inputs; i++)
 					{
-						link_genes.push_back(link_list->getInnov(Link_Gene(node_genes[i].node_number, node.node_number)));
+						link_genes.push_back(link_list->checkInnov(Link_Gene(node_genes[i].node_number, node.node_number)));
+						link_genes.back().wheight = RandomDigits(Wheight_Range_Value);
 					}
 				}
 			}
@@ -348,14 +352,115 @@ namespace neat {
 	};
 
 
-	struct NEAT {
+	struct Neuron {
 
-		Link_List* link_list = new Link_List();
-		Genome genome = Genome(link_list);
-
+		double bias{};
+		double value = NAN;
 
 	};
 
 
+	struct Network
+	{
+		Genome* genome;
+		std::vector<Neuron> neurons;
+
+		Network(Genome* g) {
+			genome = g;
+			Init();
+		}
+
+		int Init() {
+			for (Node_Gene node : genome->node_genes)
+			{
+				neurons.push_back(Neuron(node.bias));
+			}
+			return 0;
+		}
+
+		std::vector<double> Activate(std::vector<double> inputs) {
+
+			fillInpuitNeurons(inputs);
+			std::vector<double> results;
+
+			for (Node_Gene node : genome->node_genes)
+			{
+				if (node.type == Node_Type::Output) {
+					results.push_back(getNodeValue(node.node_number));
+				}
+			}
+
+			return results;
+		}
+
+		int fillInpuitNeurons(std::vector<double> inputs) {
+			try {
+				if (inputs.size() != Num_Of_Inputs) {
+					throw std::runtime_error("ERROR: Wrong amout of inputs for network");
+				}
+			}
+			catch (std::runtime_error e) {
+				std::cout << e.what() << ", Expected " << Num_Of_Inputs << " inputs, got " << inputs.size() << "\n";
+				exit(1);
+
+			}
+
+			for (Node_Gene node : genome->node_genes)
+			{
+				if (node.type == Node_Type::Input) {
+
+					int i = node.node_number - 1;
+					neurons[i].value = inputs[i];
+				}
+			}
+			return 0;
+		}
+
+		double ActFunction(double x) {
+			return tanh(x);
+		}
+
+		double getNodeValue(int node_number) {
+			int i = node_number - 1;
+
+			if (isnan(neurons[i].value)) {
+
+				double sum_of_wheights = 0;
+
+				for (Link_Gene& link : genome->link_genes)
+				{
+					if (link.enabled) {
+						if (/*(link.from_node == node_number) or*/ link.to_node == node_number) {
+							sum_of_wheights += getNodeValue(link.from_node) * link.wheight;
+						}
+					}
+				}
+				neurons[i].value = ActFunction(sum_of_wheights+ neurons[i].bias);
+				return neurons[i].value;
+			}
+			else
+			{
+				return neurons[i].value;
+			}
+		}
+
+	};
+
+
+	struct NEAT {
+
+		Link_List* link_list = new Link_List();
+		Genome* genome = new Genome(link_list);
+		Network* netowk = new Network(genome);
+		std::vector<Network*> networks;
+
+		int Init() {
+			for (int i = 0; i < Population_Size; i++)
+			{
+				networks.push_back(new Network(new Genome(link_list)));
+			}
+			return 0;
+		}
+	};
 }
 #endif

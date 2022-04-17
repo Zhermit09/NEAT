@@ -34,8 +34,8 @@ int64_t Random() {
 
 
 struct Bird {
-	float x = 0.0f;
-	float y = 0.0f;
+	float x{};
+	float y{};
 	std::vector <olc::Decal*> sprites;
 
 	olc::Sprite* current{};
@@ -52,6 +52,12 @@ struct Bird {
 
 	float bx{};
 	float by{};
+
+	Bird(float x, float y, std::vector <olc::Decal*> s) {
+		this->x = x;
+		this->y = y;
+		sprites = s;
+	}
 
 	olc::Decal* Animate(float dTime) {
 
@@ -130,7 +136,7 @@ class Engine : public olc::PixelGameEngine {
 	std::vector<Pipe> pipeList;
 	std::vector<olc::Decal*> sprites;
 
-	Bird bird;
+	std::vector<Bird*> birds;
 	Scenery background;
 	Scenery ground;
 
@@ -145,6 +151,7 @@ class Engine : public olc::PixelGameEngine {
 
 	//neat::Network* firstAi;
 	//neat::Net * no;
+	neat::NEAT tean;
 
 public:
 	Engine() {
@@ -170,7 +177,10 @@ public:
 		bird_w = scale * sprites[0]->sprite->width;
 		bird_h = scale * sprites[0]->sprite->height;
 
-		bird = { ((screen_w / 2.f) - (2.f * bird_w)), (screen_h - 125) / 2.f, sprites };
+		for (int i = 0; i < neat::Population_Size; i++)
+		{
+			birds.push_back(new Bird(((screen_w / 2.f) - (2.f * bird_w)), (screen_h - 125) / 2.f, sprites));
+		}
 		background = { 0.0f, 20.0f };
 		ground = { 0.0f, 220.0f };
 
@@ -184,7 +194,8 @@ public:
 
 		//firstAi = new neat::Network();
 		//no = new neat::Net(neat::Genome());
-
+		tean = neat::NEAT();
+		tean.Init();
 		return true;
 	}
 
@@ -198,12 +209,17 @@ public:
 	//###################################################################################################################################
 
 	int GameLoop(float dTime) {
+		//Cehck order later
+
+		std::vector<Bird*> remove;
+		std::vector<neat::Network*> rem;
 
 		if (game_loop) {
 
-			bird.Gravity(dTime);
-			bird.Rotate(dTime);
-
+			for (Bird* bird : birds) {
+				bird->Gravity(dTime);
+				bird->Rotate(dTime);
+			}
 			for (Pipe& pipe : pipeList) {
 				pipe.Move(dTime);
 			}
@@ -214,14 +230,22 @@ public:
 
 		DevTools(dTime);
 
-		//AiTest();
-		Score(bird.bx);
+
+		Score(birds[0]->bx);
 		NewPossiblePipe();
 		PipeOffScreen();
 
-		Collision();
+		AiTest();
+		for (int i = 0; i < birds.size(); i++) {
+			Collision(birds[i]);
+			if (!birds[i]->collide) {
+				remove.push_back(birds[i]);
+				rem.push_back(tean.networks[i]);
+			}
+		}
+		birds = remove;
+		tean.networks = rem;
 		GameOver();
-
 		return 0;
 	}
 
@@ -229,18 +253,15 @@ public:
 		Pipe pipe = pipeList[currentPipe];
 
 		if (game_loop) {
-			auto result = 0;//= no->Do({ bird.bx, bird.by, pipe.x, pipe.y, pipe.x, pipe.y - 161 });
-			//std::cout << "\n" << "\n";
-			//for (int i = 0; i < result.size(); i++)
-			//{
 
-				//std::cout << result[i] << "\t";
+			for (int i = 0; i < birds.size(); i++)
+			{
+				auto result = tean.networks[i]->Activate({ birds[i]->by,  abs(pipeList[currentPipe].y - birds[i]->by), abs(pipeList[currentPipe].y - 161 - birds[i]->by) });
 
-			if (result > 0.5) {
-				bird.Jump();
+				if (result[0] > 0.5) {
+					birds[i]->Jump();
+				}  
 			}
-			//}
-			//std::cout << "\n\n\n";
 		}
 
 		if (score > 0)game_loop = false;
@@ -284,25 +305,25 @@ public:
 		float degrees = PI / 180;
 
 		if (GetKey(olc::Key::UP).bHeld) {
-			bird.y -= speed;
+			birds[0]->y -= speed;
 		}
 		else if (GetKey(olc::Key::RIGHT).bHeld) {
-			bird.x += speed;
+			birds[0]->x += speed;
 		}
 		else if (GetKey(olc::Key::DOWN).bHeld) {
-			bird.y += speed;
+			birds[0]->y += speed;
 		}
 		else if (GetKey(olc::Key::LEFT).bHeld) {
-			bird.x -= speed;
+			birds[0]->x -= speed;
 		}
 		else if (GetKey(olc::Key::SPACE).bPressed) {
-			bird.Jump();
+			birds[0]->Jump();
 		}
 		else if (GetKey(olc::Key::R).bPressed) {
-			bird.x = pipeList.front().x;
-			bird.y = pipeList.front().y;
-			bird.vel = 0.0f;
-			bird.angle = 0;
+			birds[0]->x = pipeList.front().x;
+			birds[0]->y = pipeList.front().y;
+			birds[0]->vel = 0.0f;
+			birds[0]->angle = 0;
 		}
 		else if (GetKey(olc::Key::G).bPressed) {
 			if (game_loop) {
@@ -313,33 +334,33 @@ public:
 			}
 		}
 		else if (GetKey(olc::Key::E).bHeld) {
-			bird.angle += -25 * degrees * 10 * (dTime);
+			birds[0]->angle += -25 * degrees * 10 * (dTime);
 		}
 		else if (GetKey(olc::Key::Q).bHeld) {
-			bird.angle += 25 * degrees * 10 * (dTime);
+			birds[0]->angle += 25 * degrees * 10 * (dTime);
 		}
 		return 0;
 	}
 
 
-	int Collision() {
-		bird.collide = false;
+	int Collision(Bird* bird) {
+		bird->collide = false;
 
-		float x = (abs(cos(bird.angle)) * (bird_w / (2.0f))) - (abs(sin(bird.angle)) * (-bird_h / (2.0f)));
-		float y = (abs(sin(bird.angle)) * (-bird_w / (2.0f))) + (abs(cos(bird.angle)) * (-bird_h / (2.0f)));
+		float x = (abs(cos(bird->angle)) * (bird_w / (2.0f))) - (abs(sin(bird->angle)) * (-bird_h / (2.0f)));
+		float y = (abs(sin(bird->angle)) * (-bird_w / (2.0f))) + (abs(cos(bird->angle)) * (-bird_h / (2.0f)));
 
-		bird.by = bird.y + (bird_h / 2.f) + y;
-		bird.bx = bird.x + (bird_w / 2.f) - x;
+		bird->by = bird->y + (bird_h / 2.f) + y;
+		bird->bx = bird->x + (bird_w / 2.f) - x;
 
-		float by = bird.by;
-		float bx = bird.bx;
+		float by = bird->by;
+		float bx = bird->bx;
 
 		std::vector<std::vector<bool>> mask_Bird;
 
 		if ((by + abs(y + y)) > 675) {
-			mask_Bird = RotateBirdMask();
-			PixelPerfect(mask_Ground, mask_Bird, (675 - (int)by), 0);
-			if (bird.collide) return 0;
+			mask_Bird = RotateBirdMask(bird);
+			PixelPerfect(bird, mask_Ground, mask_Bird, (675 - (int)by), 0);
+			if (bird->collide) return 0;
 		}
 
 
@@ -350,15 +371,15 @@ public:
 			if (((bx < px + pipe_w) and (px < (bx + abs(x + x)))) and (((by + abs(y + y)) > py) or (py - (screen_h - pipe_h) > by))) {
 
 				if (mask_Bird.empty()) {
-					mask_Bird = RotateBirdMask();
+					mask_Bird = RotateBirdMask(bird);
 				}
 
-				PixelPerfect(mask_PipeImg_Down, mask_Bird, (int)round(pipe.y) - (int)round(by), (int)round(pipe.x) - (int)round(bx));
-				if (bird.collide) return 0;
-				PixelPerfect(mask_PipeImg_Up, mask_Bird, (int)round(pipe.y - screen_h) - (int)round(by), (int)round(pipe.x) - (int)round(bx));
-				if (bird.collide) return 0;
+				PixelPerfect(bird, mask_PipeImg_Down, mask_Bird, (int)round(pipe.y) - (int)round(by), (int)round(pipe.x) - (int)round(bx));
+				if (bird->collide) return 0;
+				PixelPerfect(bird, mask_PipeImg_Up, mask_Bird, (int)round(pipe.y - screen_h) - (int)round(by), (int)round(pipe.x) - (int)round(bx));
+				if (bird->collide) return 0;
 				if ((by < 0) and (bx < px + pipe_w - 2 * scale) and ((px + 2 * scale) < (bx + abs(x + x)))) {
-					bird.collide = true;
+					bird->collide = true;
 					return 0;
 				}
 
@@ -368,7 +389,7 @@ public:
 	}
 
 
-	int PixelPerfect(std::vector<std::vector<bool>> mask, std::vector<std::vector<bool>> mask_Bird, int dY, int dX) {
+	int PixelPerfect(Bird* bird, std::vector<std::vector<bool>> mask, std::vector<std::vector<bool>> mask_Bird, int dY, int dX) {
 
 		int _y = std::max(0, -dY);
 		int h = std::min((int)mask.size(), (int)(mask_Bird.size() - dY));
@@ -380,11 +401,11 @@ public:
 			for (int y = _y; y < h; y++) {
 				for (int x = _x; x < w; x++) {
 					if (mask_Bird[y + dY][x + dX] and mask[y][x]) {
-						bird.collide = true;
+						bird->collide = true;
 						return 0;
 					}
 					else {
-						bird.collide = false;
+						bird->collide = false;
 					}
 				}
 			}
@@ -408,14 +429,14 @@ public:
 	}
 
 
-	std::vector<std::vector<bool>> RotateBirdMask() {
-		float s = sin(bird.angle);
-		float c = cos(bird.angle);
+	std::vector<std::vector<bool>> RotateBirdMask(Bird* bird) {
+		float s = sin(bird->angle);
+		float c = cos(bird->angle);
 
 		int w = abs(2 * ((int)round((abs(c) * (bird_w / (2.0f))) - (abs(s) * (-bird_h / (2.0f))))));
 		int h = abs(2 * ((int)round((abs(s) * (-bird_w / (2.0f))) + (abs(c) * (-bird_h / (2.0f))))));
 
-		auto mask = GetMask(bird.current);
+		auto mask = GetMask(bird->current);
 		std::vector<std::vector<bool>> rotated_mask(h, std::vector<bool>(w, false));
 
 		int dx = (int)round(w / 2.f - bird_w / 2.f);
@@ -441,10 +462,11 @@ public:
 
 
 	int GameOver() {
-		if (bird.collide) {
-			bird.vel = 0;
-			bird.y = (screen_h - 125) / 2.f;
-			bird.angle = 0;
+		if (birds.size() == 0) {
+			for (int i = 0; i < neat::Population_Size; i++)
+			{
+				birds.push_back(new Bird(((screen_w / 2.f) - (2.f * bird_w)), (screen_h - 125) / 2.f, sprites));
+			}
 			pipeList.clear();
 			pipeList.push_back(Pipe{ (float)screen_w, RandomY });
 			score = 0;
@@ -452,6 +474,8 @@ public:
 			scorePipe = 0;
 
 			//no = new neat::Net(neat::Genome());
+			tean.networks.clear();
+			tean.Init();
 		}
 		return 0;
 	}
@@ -474,8 +498,9 @@ public:
 			DrawDecal({ x, (y - screen_h) }, pipeImg_Up, { scale,scale });
 		}
 
-		DrawRotatedDecal({ round(bird.x + (bird_w / 2)), round(bird.y + (bird_h / 2)) }, bird.Animate(dTime), bird.angle, { bird_w / (2.0f * scale), bird_h / (2.0f * scale) }, { scale,scale });
-
+		for (Bird* bird : birds) {
+			DrawRotatedDecal({ round(bird->x + (bird_w / 2)), round(bird->y + (bird_h / 2)) }, bird->Animate(dTime), bird->angle, { bird_w / (2.0f * scale), bird_h / (2.0f * scale) }, { scale,scale });
+		}
 		DrawDecal({ g_x, 675 }, ground_image, { scale,scale });
 		DrawDecal({ g_x + screen_w, 675 }, ground_image, { scale,scale });
 
@@ -505,14 +530,23 @@ int main()
 {
 	int pixelSize = 1;
 
-	neat::NEAT*  g = new neat::NEAT();
-
 	/*
+	while (true)
+	{
+		for (double result : head.netowk->Activate({ 1., 2., 3. })) {
+			std::cout << result << "\n";
+		}
+		head = neat::NEAT();
+	}
+	*/
+
+
+
 	Engine engine; {
 
 		if (engine.Construct(screen_w, screen_h, pixelSize, pixelSize)) {
 			engine.Start();
 		}
 		return 0;
-	}*/
+	}
 }
