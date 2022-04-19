@@ -260,7 +260,7 @@ public:
 
 				if (result[0] > 0.5) {
 					birds[i]->Jump();
-				}  
+				}
 			}
 		}
 
@@ -525,7 +525,6 @@ public:
 
 };
 
-
 int main()
 {
 	int pixelSize = 1;
@@ -540,7 +539,7 @@ int main()
 	}
 	*/
 
-
+	//neat::Neuron* z = neat::Neuron();
 
 	Engine engine; {
 
@@ -550,3 +549,4 @@ int main()
 		return 0;
 	}
 }
+
