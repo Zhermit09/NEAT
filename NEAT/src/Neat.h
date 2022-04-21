@@ -1,9 +1,8 @@
 #include <iostream>
 #include <vector>
-#include <numeric>
-#include <string>
-#include <cstdarg>
-#define exp 2.71828182845904523536028747135266249775724709369995957496696762772407663035354759457138217852516642742746639193200305992181741359662
+//#include <numeric>
+//#include <string>
+//#include <cstdarg>
 
 #pragma once 
 int64_t Random();
@@ -17,17 +16,18 @@ namespace neat {
 
 	//# Network parameters
 	const int Num_Of_Inputs = 3;
+	const int Num_Of_Hidden = 1;       //Good to start off with one hidden if output is more than one
 	const int Num_Of_Outputs = 1;
-	const int Population_Size = 500;
+
+	const int Population_Size = 15;
 
 	//# Wheight options
-	const int Wheight_Range_Value = 9999;
+	const int Wheight_Range_Value = 30; //20?
 
 	//# Bias options
-	const int Bias_Range_Value = 9999;
+	const int Bias_Range_Value = 30;
 
 	//const int Hidden_Layers = 1;
-	//const int Num_Of_Hidden = 1;
 	//------------------------------
 
 
@@ -212,22 +212,24 @@ namespace neat {
 
 	struct Node_Gene {
 
-		int node_number{};
+		int node_ID{};
 		Node_Type type{};
-		double bias{};
+		int layer{};
+		double bias{};//?
 
 	};
 
 
 	struct Link_Gene
 	{
-		int from_node{};
-		int to_node{};
+		int from_node_ID{};
+		int to_node_ID{};
 
 		double wheight{};
 		bool enabled = true;
+		//bool recurrent{};
 
-		int Innovation_Number{};
+		int unique_ID{};
 
 	};
 
@@ -241,11 +243,11 @@ namespace neat {
 		}
 
 
-		Link_Gene checkInnov(Link_Gene obj) {
+		Link_Gene getInnovN(Link_Gene obj) {
 
 			for (int i = 0; i < list.size(); i++)
 			{
-				if ((obj.from_node == list[i].from_node) and (obj.to_node == list[i].to_node)) {
+				if ((obj.from_node_ID == list[i].from_node_ID) and (obj.to_node_ID == list[i].to_node_ID)) {
 					return  list[i];
 				}
 			}
@@ -262,7 +264,7 @@ namespace neat {
 		int Add(Link_Gene obj) {
 
 			list.push_back(obj);
-			list[size() - 1].Innovation_Number = size();
+			list[size() - 1].unique_ID = size();
 
 			return 0;
 		}
@@ -302,6 +304,7 @@ namespace neat {
 
 		std::vector<Node_Gene> node_genes{};
 		std::vector<Link_Gene> link_genes{};
+		//Problem with muliple of same ^connections
 
 		Link_List* link_list{};
 
@@ -319,29 +322,55 @@ namespace neat {
 
 		int NodeInit() {
 
-			for (int i = 0; i < Num_Of_Inputs + Num_Of_Outputs; i++)
+			for (int i = 0; i < Num_Of_Inputs; i++)
 			{
-				if (i < Num_Of_Inputs) {
-					node_genes.push_back(Node_Gene(i + 1, Node_Type::Input, RandomDigits(Bias_Range_Value)));
-				}
-				else {
-					node_genes.push_back(Node_Gene(i + 1, Node_Type::Output, RandomDigits(Bias_Range_Value)));
-				}
+				node_genes.push_back(Node_Gene(i + 1, Node_Type::Input, 1, 0));//RandomDigits(Bias_Range_Value)));				
 			}
-
+			for (int i = Num_Of_Inputs; i < Num_Of_Inputs + Num_Of_Outputs; i++)
+			{
+				node_genes.push_back(Node_Gene(i + 1, Node_Type::Output, (Num_Of_Hidden > 0) + 2, 0));//RandomDigits(Bias_Range_Value)));
+			}
+			for (int i = Num_Of_Inputs + Num_Of_Outputs; i < Num_Of_Inputs + Num_Of_Outputs + Num_Of_Hidden; i++)
+			{
+				node_genes.push_back(Node_Gene(i + 1, Node_Type::Hidden, 2 , 0));//RandomDigits(Bias_Range_Value)));
+			}
 			return 0;
 		}
 
 		int LinkInit() {
 
+			if (Num_Of_Hidden <= 0) {
+				for (Node_Gene node : node_genes)
+				{
+					if (node.type == Node_Type::Output) {
+						for (int i = 0; i < Num_Of_Inputs; i++)
+						{
+							link_genes.push_back(link_list->getInnovN(Link_Gene(node_genes[i].node_ID, node.node_ID)));
+							link_genes.back().wheight = RandomDigits(Wheight_Range_Value);
+						}
+					}
+				}
+			}
+			else {
 
-			for (Node_Gene node : node_genes)
-			{
-				if (node.type == Node_Type::Output) {
-					for (int i = 0; i < Num_Of_Inputs; i++)
-					{
-						link_genes.push_back(link_list->checkInnov(Link_Gene(node_genes[i].node_number, node.node_number)));
-						link_genes.back().wheight = RandomDigits(Wheight_Range_Value);
+				for (Node_Gene node : node_genes)
+				{
+					if (node.type == Node_Type::Hidden) {
+						for (int i = 0; i < Num_Of_Inputs; i++)
+						{
+							link_genes.push_back(link_list->getInnovN(Link_Gene(node_genes[i].node_ID, node.node_ID)));
+							link_genes.back().wheight = RandomDigits(Wheight_Range_Value);
+						}
+					}
+				}
+				for (Node_Gene node : node_genes)
+				{
+					if (node.type == Node_Type::Output) {
+						for (int i = Num_Of_Inputs + Num_Of_Outputs; i < Num_Of_Inputs + Num_Of_Outputs + Num_Of_Hidden; i++)
+						{
+							link_genes.push_back(link_list->getInnovN(Link_Gene(node_genes[i].node_ID, node.node_ID)));
+							link_genes.back().wheight = RandomDigits(Wheight_Range_Value);
+						}
 					}
 				}
 			}
@@ -355,6 +384,8 @@ namespace neat {
 	struct Neuron {
 
 		double bias{};
+		//double sum_of_wheights{};
+		//int layer{};
 		double value = NAN;
 
 	};
@@ -386,7 +417,7 @@ namespace neat {
 			for (Node_Gene node : genome->node_genes)
 			{
 				if (node.type == Node_Type::Output) {
-					results.push_back(getNodeValue(node.node_number));
+					results.push_back(getNodeValue(node.node_ID));
 				}
 			}
 
@@ -409,7 +440,7 @@ namespace neat {
 			{
 				if (node.type == Node_Type::Input) {
 
-					int i = node.node_number - 1;
+					int i = node.node_ID - 1;
 					neurons[i].value = inputs[i];
 				}
 			}
@@ -420,8 +451,8 @@ namespace neat {
 			return tanh(x);
 		}
 
-		double getNodeValue(int node_number) {
-			int i = node_number - 1;
+		double getNodeValue(int node_ID) {
+			int i = node_ID - 1;
 
 			if (isnan(neurons[i].value)) {
 
@@ -430,12 +461,12 @@ namespace neat {
 				for (Link_Gene& link : genome->link_genes)
 				{
 					if (link.enabled) {
-						if (/*(link.from_node == node_number) or*/ link.to_node == node_number) {
-							sum_of_wheights += getNodeValue(link.from_node) * link.wheight;
+						if (/*(link.from_node == node_number) or*/ link.to_node_ID == node_ID) {
+							sum_of_wheights += getNodeValue(link.from_node_ID) * link.wheight;
 						}
 					}
 				}
-				neurons[i].value = ActFunction(sum_of_wheights+ neurons[i].bias);
+				neurons[i].value = ActFunction(sum_of_wheights + neurons[i].bias);
 				return neurons[i].value;
 			}
 			else
@@ -462,5 +493,6 @@ namespace neat {
 			return 0;
 		}
 	};
+
 }
 #endif

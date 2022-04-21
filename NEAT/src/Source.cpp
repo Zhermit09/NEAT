@@ -4,12 +4,15 @@
 #include "neat.h"
 #include <Windows.h>
 #include <Bcrypt.h>
+//#include <thread>
 #pragma comment(lib, "bcrypt.lib")
 #define RandomY (600.0f - abs(Random() % 361))
 #define PI 3.141592653589793238462643383279502884197169399375105820974944592307816406286f
 
 const int screen_w = 576;
 const int screen_h = 800;
+const int true_screen_w = screen_w + 1000;
+const int true_screen_h = screen_h + 0;
 
 const int scale = 2;
 int pipe_w;
@@ -192,17 +195,11 @@ public:
 		mask_PipeImg_Up = GetMask(pipeImg_Up->sprite);
 		mask_Ground = GetMask(ground_image->sprite);
 
+
 		//firstAi = new neat::Network();
 		//no = new neat::Net(neat::Genome());
 		tean = neat::NEAT();
 		tean.Init();
-		return true;
-	}
-
-
-	bool OnUserUpdate(float dTime) override {
-		GameLoop(dTime);
-		Draw(dTime);
 		return true;
 	}
 
@@ -513,6 +510,12 @@ public:
 		return 0;
 	}
 
+	int DrawNetwork() {
+
+			FillRectDecal({ screen_w, 0 }, { true_screen_w - screen_w, true_screen_h }, olc::BLACK);
+		
+		return 0;
+	}
 
 	float TextCenter() {
 		int digit = 0;
@@ -523,7 +526,23 @@ public:
 		return ((screen_w - digit * (8 * 3 * scale)) / 2.f);
 	}
 
+	//###################################################################################################################################
+
+	bool OnUserUpdate(float dTime) override {
+		GameLoop(dTime);
+		Draw(dTime);
+		DrawNetwork();
+
+		//std::thread t1(&Engine::GameLoop, this, dTime);
+		//std::thread t2(&Engine::Draw, this, dTime);
+
+		//t1.join();
+		//t2.join();
+		return true;
+	}
+
 };
+
 
 int main()
 {
@@ -539,14 +558,17 @@ int main()
 	}
 	*/
 
-	//neat::Neuron* z = neat::Neuron();
+	//neat::NEAT* z = new neat::NEAT();
 
 	Engine engine; {
 
-		if (engine.Construct(screen_w, screen_h, pixelSize, pixelSize)) {
+		if (engine.Construct(true_screen_w, true_screen_h, pixelSize, pixelSize)) {
 			engine.Start();
 		}
 		return 0;
 	}
+	//neat::DrawTheNetwork();
 }
+
+
 
