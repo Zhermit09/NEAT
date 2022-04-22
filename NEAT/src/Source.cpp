@@ -29,11 +29,22 @@ int64_t Random() {
 	BYTE buffer[sizeof(INT64_MAX)];
 	DWORD size = sizeof(INT64_MAX);
 
-	BCryptGenRandom(NULL, buffer, size, BCRYPT_USE_SYSTEM_PREFERRED_RNG);
+	if (BCryptGenRandom(NULL, buffer, size, BCRYPT_USE_SYSTEM_PREFERRED_RNG) != 0) {
+		return (int64_t)NAN;
+	}
 	std::memcpy(&value, buffer, 8);
-
 	return value;
 }
+
+/*int ndz = 4;
+void drawtest(neat::NEAT& z) {
+
+	z.genome->node_genes.push_back(neat::Node_Gene(z.genome->node_genes.size() + 1, neat::Node_Type::Hidden, 0, 0));
+	z.genome->link_genes.push_back(z.global_link_list->getInnovN(neat::Link_Gene(1, z.genome->node_genes.size())));
+	z.genome->link_genes.push_back(z.global_link_list->getInnovN((neat::Link_Gene(z.genome->node_genes.size(), /*4 /ndz++))));
+
+	z.genome->ValidateLayers();
+}*/
 
 
 struct Bird {
@@ -261,7 +272,7 @@ public:
 			}
 		}
 
-		if (score > 0)game_loop = false;
+		//if (score > 0)game_loop = false;
 
 		return 0;
 	}
@@ -321,6 +332,7 @@ public:
 			birds[0]->y = pipeList.front().y;
 			birds[0]->vel = 0.0f;
 			birds[0]->angle = 0;
+			//drawtest(tean);
 		}
 		else if (GetKey(olc::Key::G).bPressed) {
 			if (game_loop) {
@@ -512,8 +524,57 @@ public:
 
 	int DrawNetwork() {
 
-			FillRectDecal({ screen_w, 0 }, { true_screen_w - screen_w, true_screen_h }, olc::BLACK);
-		
+		float node_size = 13;
+
+		double total_layers = tean.genome->node_genes[neat::Num_Of_Inputs].layer;
+		float r_width = 0;
+		float x = 0;
+
+
+		std::vector<std::pair<double, double>> cords;
+
+		FillRectDecal({ screen_w, 0 }, { true_screen_w - screen_w, true_screen_h }, olc::BLACK);
+
+		for (int i = 0; i < total_layers; i++) {
+			r_width = (true_screen_w - screen_w) / total_layers;
+			x = screen_w + i * r_width + r_width / 2 - node_size / 2;
+
+			float nodes_layer = 0;
+			float r_height = 0;
+			float y = 0;
+
+			for (neat::Node_Gene& node : tean.genome->node_genes)
+			{
+				if (node.layer == (i + 1)) {
+					nodes_layer++;
+				}
+			}
+
+			for (int j = 0; j < nodes_layer; j++)
+			{
+				r_height = (true_screen_h) / nodes_layer;
+				y = j * r_height + r_height / 2 - node_size / 2;
+
+				cords.push_back({ x + node_size / 2,y + node_size / 2 });
+				FillRectDecal({ x, y }, { node_size, node_size }, olc::WHITE);
+			}
+
+
+		}
+		for (neat::Link_Gene& link : tean.genome->link_genes) {
+			float x1 = cords[link.from_node_ID - 1].first;
+			float y1 = cords[link.from_node_ID - 1].second;
+			float x2 = cords[link.to_node_ID - 1].first;
+			float y2 = cords[link.to_node_ID - 1].second;
+
+			if (link.enabled) {
+				DrawLineDecal({ x1, y1 }, { x2, y2 }, olc::GREEN);
+			}
+			else {
+				DrawLineDecal({ x1, y1 }, { x2, y2 }, olc::RED);
+			}
+		}
+
 		return 0;
 	}
 
@@ -567,8 +628,8 @@ int main()
 		}
 		return 0;
 	}
-	//neat::DrawTheNetwork();
 }
+
 
 
 

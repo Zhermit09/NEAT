@@ -7,8 +7,9 @@
 #pragma once 
 int64_t Random();
 
+
 #ifdef NEAT_AI_NEURALNETWORK
-//#define NEAT_AI_NEURALNETWORK
+#undef NEAT_AI_NEURALNETWORK
 
 namespace neat {
 
@@ -16,7 +17,7 @@ namespace neat {
 
 	//# Network parameters
 	const int Num_Of_Inputs = 3;
-	const int Num_Of_Hidden = 1;       //Good to start off with one hidden if output is more than one
+	const int Num_Of_Hidden = 0;       //Good to start off with one hidden if output is more than one
 	const int Num_Of_Outputs = 1;
 
 	const int Population_Size = 15;
@@ -306,10 +307,10 @@ namespace neat {
 		std::vector<Link_Gene> link_genes{};
 		//Problem with muliple of same ^connections
 
-		Link_List* link_list{};
+		Link_List* global_link_list{};
 
 		Genome(Link_List* list) {
-			link_list = list;
+			global_link_list = list;
 			Init();
 		}
 
@@ -332,7 +333,7 @@ namespace neat {
 			}
 			for (int i = Num_Of_Inputs + Num_Of_Outputs; i < Num_Of_Inputs + Num_Of_Outputs + Num_Of_Hidden; i++)
 			{
-				node_genes.push_back(Node_Gene(i + 1, Node_Type::Hidden, 2 , 0));//RandomDigits(Bias_Range_Value)));
+				node_genes.push_back(Node_Gene(i + 1, Node_Type::Hidden, 2, 0));//RandomDigits(Bias_Range_Value)));
 			}
 			return 0;
 		}
@@ -340,12 +341,12 @@ namespace neat {
 		int LinkInit() {
 
 			if (Num_Of_Hidden <= 0) {
-				for (Node_Gene node : node_genes)
+				for (Node_Gene& node : node_genes)
 				{
 					if (node.type == Node_Type::Output) {
 						for (int i = 0; i < Num_Of_Inputs; i++)
 						{
-							link_genes.push_back(link_list->getInnovN(Link_Gene(node_genes[i].node_ID, node.node_ID)));
+							link_genes.push_back(global_link_list->getInnovN(Link_Gene(node_genes[i].node_ID, node.node_ID)));
 							link_genes.back().wheight = RandomDigits(Wheight_Range_Value);
 						}
 					}
@@ -353,22 +354,22 @@ namespace neat {
 			}
 			else {
 
-				for (Node_Gene node : node_genes)
+				for (Node_Gene& node : node_genes)
 				{
 					if (node.type == Node_Type::Hidden) {
 						for (int i = 0; i < Num_Of_Inputs; i++)
 						{
-							link_genes.push_back(link_list->getInnovN(Link_Gene(node_genes[i].node_ID, node.node_ID)));
+							link_genes.push_back(global_link_list->getInnovN(Link_Gene(node_genes[i].node_ID, node.node_ID)));
 							link_genes.back().wheight = RandomDigits(Wheight_Range_Value);
 						}
 					}
 				}
-				for (Node_Gene node : node_genes)
+				for (Node_Gene& node : node_genes)
 				{
 					if (node.type == Node_Type::Output) {
 						for (int i = Num_Of_Inputs + Num_Of_Outputs; i < Num_Of_Inputs + Num_Of_Outputs + Num_Of_Hidden; i++)
 						{
-							link_genes.push_back(link_list->getInnovN(Link_Gene(node_genes[i].node_ID, node.node_ID)));
+							link_genes.push_back(global_link_list->getInnovN(Link_Gene(node_genes[i].node_ID, node.node_ID)));
 							link_genes.back().wheight = RandomDigits(Wheight_Range_Value);
 						}
 					}
@@ -376,6 +377,52 @@ namespace neat {
 			}
 
 			return 0;
+		}
+
+		int ValidateLayers() {
+
+			int highest_layer = 0;
+
+			for (Node_Gene& node : node_genes)
+			{
+				if (node.node_ID > Num_Of_Inputs + Num_Of_Outputs) {
+					int longest_path = GetPath(node.node_ID);
+					node.layer = 1 + longest_path;
+
+					if ((1 + longest_path) > highest_layer) {
+						highest_layer = (1 + longest_path);
+					}
+				}
+			}
+			if(node_genes.size() > Num_Of_Inputs + Num_Of_Outputs){
+			for (int i = Num_Of_Inputs; i < Num_Of_Inputs + Num_Of_Outputs; i++)
+			{
+				node_genes[i].layer = highest_layer + 1;
+			}
+			}
+			else {
+				for (int i = Num_Of_Inputs; i < Num_Of_Inputs + Num_Of_Outputs; i++)
+				{
+					node_genes[i].layer = 2;
+				}
+			}
+
+			return 0;
+		}
+
+		int GetPath(int node_ID) {
+			int longest_path = 0;
+
+			for (Link_Gene& link : link_genes)
+			{
+				if (link.to_node_ID == node_ID) {
+					int path_counter = 1 + GetPath(link.from_node_ID);
+					if (path_counter > longest_path) {
+						longest_path = path_counter;
+					}
+				}
+			}
+			return longest_path;
 		}
 
 	};
@@ -402,7 +449,7 @@ namespace neat {
 		}
 
 		int Init() {
-			for (Node_Gene node : genome->node_genes)
+			for (Node_Gene& node : genome->node_genes)
 			{
 				neurons.push_back(Neuron(node.bias));
 			}
@@ -414,7 +461,7 @@ namespace neat {
 			fillInpuitNeurons(inputs);
 			std::vector<double> results;
 
-			for (Node_Gene node : genome->node_genes)
+			for (Node_Gene& node : genome->node_genes)
 			{
 				if (node.type == Node_Type::Output) {
 					results.push_back(getNodeValue(node.node_ID));
@@ -436,7 +483,7 @@ namespace neat {
 
 			}
 
-			for (Node_Gene node : genome->node_genes)
+			for (Node_Gene& node : genome->node_genes)
 			{
 				if (node.type == Node_Type::Input) {
 
@@ -480,15 +527,15 @@ namespace neat {
 
 	struct NEAT {
 
-		Link_List* link_list = new Link_List();
-		Genome* genome = new Genome(link_list);
+		Link_List* global_link_list = new Link_List();
+		Genome* genome = new Genome(global_link_list);
 		Network* netowk = new Network(genome);
 		std::vector<Network*> networks;
 
 		int Init() {
 			for (int i = 0; i < Population_Size; i++)
 			{
-				networks.push_back(new Network(new Genome(link_list)));
+				networks.push_back(new Network(new Genome(global_link_list)));
 			}
 			return 0;
 		}
