@@ -20,6 +20,8 @@ namespace neat {
 	const int Num_Of_Hidden = 0;       //Good to start off with one hidden if output is more than one
 	const int Num_Of_Outputs = 1;
 
+	//const float Link_pct = 1;
+
 	const int Population_Size = 15;
 
 	//# Wheight options
@@ -28,7 +30,6 @@ namespace neat {
 	//# Bias options
 	const int Bias_Range_Value = 30;
 
-	//const int Hidden_Layers = 1;
 	//------------------------------
 
 
@@ -197,8 +198,6 @@ namespace neat {
 
 			return result;
 		}
-
-
 	};
 	*/
 
@@ -243,6 +242,13 @@ namespace neat {
 			return (int)list.size();
 		}
 
+		int Add(Link_Gene obj) {
+
+			list.push_back(obj);
+			list[size() - 1].unique_ID = size();
+
+			return 0;
+		}
 
 		Link_Gene getInnovN(Link_Gene obj) {
 
@@ -262,13 +268,6 @@ namespace neat {
 			return 0;
 		}
 
-		int Add(Link_Gene obj) {
-
-			list.push_back(obj);
-			list[size() - 1].unique_ID = size();
-
-			return 0;
-		}
 
 		/*bool contains(Link_Gene obj) {
 
@@ -302,12 +301,14 @@ namespace neat {
 
 	struct Genome
 	{
+		double fitness{};
+
+		Link_List* global_link_list{};
 
 		std::vector<Node_Gene> node_genes{};
 		std::vector<Link_Gene> link_genes{};
 		//Problem with muliple of same ^connections
 
-		Link_List* global_link_list{};
 
 		Genome(Link_List* list) {
 			global_link_list = list;
@@ -341,6 +342,7 @@ namespace neat {
 		int LinkInit() {
 
 			if (Num_Of_Hidden <= 0) {
+ 
 				for (Node_Gene& node : node_genes)
 				{
 					if (node.type == Node_Type::Output) {
@@ -353,7 +355,7 @@ namespace neat {
 				}
 			}
 			else {
-
+ 
 				for (Node_Gene& node : node_genes)
 				{
 					if (node.type == Node_Type::Hidden) {
@@ -458,7 +460,7 @@ namespace neat {
 
 		std::vector<double> Activate(std::vector<double> inputs) {
 
-			fillInpuitNeurons(inputs);
+			LoadInputs(inputs);
 			std::vector<double> results;
 
 			for (Node_Gene& node : genome->node_genes)
@@ -471,10 +473,10 @@ namespace neat {
 			return results;
 		}
 
-		int fillInpuitNeurons(std::vector<double> inputs) {
+		int LoadInputs(std::vector<double> inputs) {
 			try {
 				if (inputs.size() != Num_Of_Inputs) {
-					throw std::runtime_error("ERROR: Wrong amout of inputs for network");
+					throw std::runtime_error("ERROR: Wrong amout of inputs for the network");
 				}
 			}
 			catch (std::runtime_error e) {
@@ -528,15 +530,27 @@ namespace neat {
 	struct NEAT {
 
 		Link_List* global_link_list = new Link_List();
-		Genome* genome = new Genome(global_link_list);
-		Network* netowk = new Network(genome);
+		std::vector<Genome*> genomes;
 		std::vector<Network*> networks;
 
-		int Init() {
+		NEAT() {
 			for (int i = 0; i < Population_Size; i++)
 			{
-				networks.push_back(new Network(new Genome(global_link_list)));
+				Genome* temp = new Genome(global_link_list);
+				genomes.push_back(temp);
+				networks.push_back(new Network(temp));
 			}
+		}
+
+		int ConstructNet() {
+			if (networks.empty()) {
+				networks.clear();
+				for (int i = 0; i < Population_Size; i++)
+				{
+					networks.push_back(new Network(genomes[i]));
+				}
+			}
+
 			return 0;
 		}
 	};

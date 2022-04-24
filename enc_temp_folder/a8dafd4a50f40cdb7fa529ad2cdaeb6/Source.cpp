@@ -514,6 +514,8 @@ public:
 			currentPipe = 0;
 			scorePipe = 0;
 
+
+
 			genes = neatAI.genomes;
 			neatAI.ConstructNet();
 		}
