@@ -22,13 +22,22 @@ namespace neat {
 
 	//const float Link_pct = 1;
 
-	const int Population_Size = 50;
+	const int Population_Size = 15;
 
 	//# Wheight options
 	const int Wheight_Range_Value = 30; //20?
 
+
 	//# Bias options
 	const int Bias_Range_Value = 30;
+
+
+	//# Compatibility
+	double c1 = 1;
+	double c2 = 2;
+	double c3 = 0.4;
+
+	double comp_thresh = 6.0;
 
 	//------------------------------
 
@@ -41,166 +50,6 @@ namespace neat {
 		return (Random() % (mod)) + decimals;
 
 	}
-
-	/*
-	struct Neuron {
-		std::vector<double> wheights;
-		double bias{};
-		double value{};
-
-		double ActFunction(double x) {
-			return tanh(x);
-		}
-
-		int MakeValue(std::vector<double> inputs) {
-
-			double sum = 0;
-
-			for (int i = 0; i < inputs.size(); i++) {
-				sum += inputs[i] * wheights[i];
-				//std::cout<<inputs[i] * wheights[i]<<"       ";
-			}
-			value = ActFunction(sum + bias);
-			return 0;
-		}
-	};
-
-	struct Layer {
-
-		std::vector<Neuron*> neurons;
-
-
-		Layer(int count) {
-			for (int i = 0; i < count; i++) {
-				neurons.push_back(new Neuron());
-			}
-		}
-
-
-		int ConnectInputLayer() {
-
-			for (int i = 0; i < neurons.size(); i++) {
-				neurons[i]->wheights.push_back(1);
-			}
-
-			return 0;
-		}
-
-
-		int CalculateInputValues(std::vector<double> inputs) {
-
-			for (int i = 0; i < neurons.size(); i++) {
-
-				neurons[i]->MakeValue({ inputs[i] });
-				//std::cout << "\n";
-			}
-
-			return 0;
-		}
-
-
-		int ConnectLayer(int size) {
-
-			for (int i = 0; i < neurons.size(); i++) {
-
-				for (int j = 0; j < size; j++) {
-					neurons[i]->wheights.push_back(RandomDigits(Wheight_Range_Value));
-				}
-				neurons[i]->bias = RandomDigits(Bias_Range_Value);
-			}
-
-			return 0;
-		}
-
-
-		int CalculateValues(std::vector<double> inputs) {
-
-			for (int i = 0; i < neurons.size(); i++) {
-				neurons[i]->MakeValue(inputs);
-				//std::cout << "\n";
-			}
-
-			return 0;
-		}
-
-
-		std::vector<double> GetValues() {
-
-			std::vector<double> values;
-
-			for (int i = 0; i < neurons.size(); i++) {
-				values.push_back(neurons[i]->value);
-			}
-			return values;
-		}
-	};
-
-	struct Network {
-
-		std::vector<Layer*> layers;
-
-		Network() {
-			CreateNeurons();
-			FirstConnect();
-		}
-
-		int CreateNeurons() {
-
-			layers.push_back(new Layer(Num_Of_Inputs));
-
-			for (int i = 0; i < Hidden_Layers; i++) {
-				layers.push_back(new Layer(Num_Of_Hidden));
-			}
-
-			layers.push_back(new Layer(Num_Of_Outputs));
-
-			return 0;
-		}
-
-		int FirstConnect() {
-
-			layers[0]->ConnectInputLayer();
-
-			for (int i = 1; i < layers.size(); i++) {
-
-				layers[i]->ConnectLayer((int)layers[i - 1]->neurons.size());
-			}
-			return 0;
-		}
-
-		std::vector<double> ActivateNetwork(std::vector<double> inputs) {
-			try {
-				if (inputs.size() != Num_Of_Inputs) {
-					throw std::runtime_error("ERROR: Wrong amout of inputs for network");
-				}
-			}
-			catch (std::runtime_error e) {
-				std::cout << e.what() << ", Expected " << Num_Of_Inputs << " inputs, got " << inputs.size() << "\n";
-				exit(1);
-
-			}
-
-			layers[0]->CalculateInputValues(inputs);
-			//std::cout << "\n";
-
-			for (int i = 1; i < layers.size(); i++)
-			{
-				layers[i]->CalculateValues(layers[i - 1]->GetValues());
-				//std::cout << "\n";
-			}
-
-			auto neurons = layers.back()->neurons;
-			std::vector<double> result;
-			for (int i = 0; i < neurons.size(); i++)
-			{
-				result.push_back(neurons[i]->value);
-			}
-
-			return result;
-		}
-	};
-	*/
-
 
 	//----------------------------------------------------------------------------------------------------------
 
@@ -481,7 +330,6 @@ namespace neat {
 			return 0;
 		}
 
-
 		std::vector<double> Activate(std::vector<double> inputs) {
 
 			LoadInputs(inputs);
@@ -495,18 +343,16 @@ namespace neat {
 			}
 			for (Neuron& neuron : neurons)
 			{
-				//neuron.sum_of_wheights = 0;
+				neuron.sum_of_wheights = 0;
 				neuron.value = NAN;
 			}
 
 			return results;
 		}
 
-
 		double ActFunction(double x) {
 			return tanh(x);
 		}
-
 
 		double getNodeValue(int node_ID) {
 			int i = node_ID - 1;
@@ -566,6 +412,142 @@ namespace neat {
 
 			return networks;
 		}
+
+		int CompatibilityCheck() {
+
+
+			//list or just a tag for species
+			int net_A = 1;//Random() % genomes.size();
+			int maxID_A = getMaxID(net_A);
+			double CD = 0;
+
+			for (int net_B = 0; net_B < genomes.size(); net_B++)
+			{
+				int E = 0;
+				int D = 0;
+				double dW = 0;
+				int N = 0;
+
+				if (net_A != net_B) {
+
+					E = getExcess(net_B, maxID_A);
+
+					D = getDisjoint(net_A, net_B);;
+
+					dW = getdW(net_A, net_B);
+
+					N = getN(genomes[net_A]->link_genes, genomes[net_B]->link_genes);
+
+					CD = (c1 * E) / N + (c2 * D) / N + (c3 * dW);
+
+					//std::cout << "E " << E << "\t" << "D " << D << "\t" << "dW " << dW << "\t" << "N " << N << "\t" << "CD " << CD << "\n";
+				}
+
+
+			}
+
+			//int maxID_B = getMaxID(0);
+
+			return 0;
+		}
+
+		int getMaxID(int net_ID) {
+
+			int maxID = 0;
+
+			for (Link_Gene& link : genomes[net_ID]->link_genes) {
+				if (link.unique_ID > maxID) {
+					maxID = link.unique_ID;
+				}
+			}
+			return maxID;
+		}
+
+		int getExcess(int net_B, int maxID_A) {
+
+			int E = 0;
+
+			for (Link_Gene& link : genomes[net_B]->link_genes) {
+
+				if (link.unique_ID > maxID_A) {
+					E += 1;
+				}
+			}
+
+			return E;
+		}
+
+		int getDisjoint(int net_A, int net_B) {
+			int D = 0;
+
+			for (Link_Gene& link_A : genomes[net_A]->link_genes) {
+
+				bool dissjoint = true;
+
+				for (Link_Gene& link_B : genomes[net_B]->link_genes) {
+
+					if (link_B.unique_ID == link_A.unique_ID) {
+						dissjoint = false;
+						break;
+					}
+				}
+				if (dissjoint) {
+					D += 1;
+				}
+
+			}
+
+			return D;
+		}
+
+		double getdW(int net_A, int net_B) {
+
+			double dW = 0;
+
+			auto& links_A = genomes[net_A]->link_genes;
+			auto& links_B = genomes[net_B]->link_genes;
+			int size = 0;
+
+			double sum = 0;
+			double counter = 0;
+
+			if (links_A.size() >= links_B.size()) {
+				size = (int)links_B.size();
+			}
+			else { size = (int)links_A.size(); }
+
+			for (int i = 0; i < size; i++)
+			{
+				if ((links_A[i].unique_ID == links_B[i].unique_ID) and links_A[i].enabled and links_B[i].enabled) {
+					sum += abs(links_A[i].wheight - links_B[i].wheight);
+					counter++;
+				}
+			}
+			dW = sum / counter;
+
+			return dW;
+		}
+
+		int getN(std::vector<Link_Gene>& links_A, std::vector<Link_Gene>& links_B) {
+
+			auto& big_Link = links_A;
+			int counter = 0;
+
+			if (links_A.size() >= links_B.size()) {
+				big_Link = links_A;
+			}
+			else { big_Link = links_B; }
+
+			for (int i = 0; i < big_Link.size(); i++)
+			{
+				if (big_Link[i].enabled) {
+					counter++;
+				}
+			}
+
+			return counter;
+		}
+
 	};
 
 }

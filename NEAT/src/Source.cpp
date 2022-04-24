@@ -38,16 +38,6 @@ int64_t Random() {
 	return value;
 }
 
-/*int ndz = 4;
-void drawtest(neat::NEAT& z) {
-
-	z.genome->node_genes.push_back(neat::Node_Gene(z.genome->node_genes.size() + 1, neat::Node_Type::Hidden, 0, 0));
-	z.genome->link_genes.push_back(z.global_link_list->getInnovN(neat::Link_Gene(1, z.genome->node_genes.size())));
-	z.genome->link_genes.push_back(z.global_link_list->getInnovN((neat::Link_Gene(z.genome->node_genes.size(), 4))));
-
-	z.genome->ValidateLayers();
-}*/
-
 
 struct Bird {
 	float x{};
@@ -676,22 +666,34 @@ public:
 };
 
 
+/*int ndz = 4;
+void drawtest(neat::NEAT* z) {
+
+	z->genomes[0]->node_genes.push_back(neat::Node_Gene(z->genomes[0]->node_genes.size() + 1, neat::Node_Type::Hidden, 0, 0));
+	z->genomes[0]->link_genes.push_back(z->global_link_list->getInnovN(neat::Link_Gene(1, z->genomes[0]->node_genes.size())));
+	z->genomes[0]->link_genes.push_back(z->global_link_list->getInnovN((neat::Link_Gene(z->genomes[0]->node_genes.size(), 4))));
+
+	z->genomes[0]->ValidateLayers();
+}
+*/
 int main()
 {
 	int pixelSize = 1;
 
-	/*
+	/*double cd = 0;
+	int counter = 1;
+
 	while (true)
 	{
-		for (double result : head.netowk->Activate({ 1., 2., 3. })) {
-			std::cout << result << "\n";
-		}
-		head = neat::NEAT();
-	}
-	*/
-
-	//neat::NEAT* z = new neat::NEAT();
-
+	neat::NEAT* n = new neat::NEAT();
+	cd += n->CompatibilityCheck();
+	std::cout << cd / counter <<"\n";
+	counter++;
+	}*/
+	//drawtest(n);
+	//n->CompatibilityCheck();
+	
+	
 	Engine engine; {
 
 		if (engine.Construct(true_screen_w, true_screen_h, pixelSize, pixelSize)) {
