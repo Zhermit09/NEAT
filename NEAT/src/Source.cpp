@@ -167,6 +167,7 @@ class Engine : public olc::PixelGameEngine {
 
 	neat::NEAT neatAI;
 	std::vector<neat::Genome*> genes;
+	std::vector<neat::Network*> networks;
 
 public:
 	Engine() {
@@ -209,7 +210,27 @@ public:
 
 		neatAI = neat::NEAT();
 		genes = neatAI.genomes;
+		networks = neatAI.ConstructNets();
 
+		return true;
+	}
+
+	bool OnUserUpdate(float dTime) override {
+		GameLoop(dTime);
+		Draw(dTime);
+		DrawNetwork();
+
+
+		/*try {}
+		catch (std::runtime_error re) {
+			std::cout << re.what();
+			system("pause");
+		}*/
+
+		//std::thread t1(&Engine::GameLoop, this, dTime);
+		//std::thread t2(&Engine::Draw, this, dTime);
+		//t1.join();
+		//t2.join();
 		return true;
 	}
 
@@ -217,6 +238,26 @@ public:
 
 	int GameLoop(float dTime) {
 		//Cehck order later
+
+		Move(dTime);
+
+		DevTools(dTime);
+
+		Score(birds[0]->bx);
+
+		BirdCollide(dTime);
+		Evaluate(dTime);
+
+		NewPossiblePipe();
+		PipeOffScreen();
+
+
+		GameOver();
+		return 0;
+	}
+
+
+	int Move(float dTime) {
 
 		if (game_loop) {
 
@@ -232,108 +273,6 @@ public:
 		ground.Move(dTime);
 		background.Move(dTime);
 
-		DevTools(dTime);
-
-
-		Score(birds[0]->bx);
-
-		BirdCollide(dTime);
-		Evaluate(dTime);
-
-		NewPossiblePipe();
-		PipeOffScreen();
-
-
-		GameOver();
-		return 0;
-	}
-
-	int BirdCollide(float dTime) {
-
-		time1 += dTime;
-
-		for (int i = 0; i < birds.size(); i++) {
-			Collision(birds[i]);
-
-			if (birds[i]->collide) {
-
-				birds.erase(birds.begin() + i);
-				genes.erase(genes.begin() + i);
-				neatAI.networks.erase(neatAI.networks.begin() + i);
-			}
-			else
-			{
-
-				if (time1 >= fpsLock) {
-					time1 = 0;
-					genes[i]->fitness += 1;
-				}
-			}
-		}
-
-		return 0;
-	}
-
-	int Evaluate(float dTime) {
-
-		//time2 += dTime;
-
-		//if (time2 >= fpsLock) {
-
-			//time2 = 0;
-			Pipe pipe = pipeList[scorePipe];
-
-			if (game_loop) {
-
-				for (int i = 0; i < birds.size(); i++)
-				{
-					double dx = pipe.x - birds[i]->x + bird_w / 2;
-					double dy1 = pipe.y - birds[i]->y + bird_h / 2;
-					double dy2 = pipe.y - 161 - birds[i]->y + bird_h / 2;
-
-					auto result = neatAI.networks[i]->Activate({ dx, dy1, dy2 });
-
-					//std::cout << result[0] << "\n";
-
-					if (result[0] > 0.5) {
-						birds[i]->Jump();
-					}
-				}
-			}
-
-			//if (score > 0)game_loop = false;
-		//}
-
-		return 0;
-	}
-
-
-	int Score(float birdX) {
-		if (pipeList[scorePipe].x < birdX) {
-			score++;
-			scorePipe += 1;
-		}
-		return 0;
-	}
-
-
-	int NewPossiblePipe() {
-		Pipe pipe = pipeList[currentPipe];
-
-		if (pipe.x < (screen_w / 2)) {
-			pipeList.push_back(Pipe{ (pipe.x + pipe_w) + (screen_w / 2), RandomY });
-			currentPipe += 1;
-		}
-		return 0;
-	}
-
-
-	int PipeOffScreen() {
-		if (pipeList.front().x < -pipe_w) {
-			pipeList.erase(pipeList.begin());
-			currentPipe -= 1;
-			scorePipe -= 1;
-		}
 		return 0;
 	}
 
@@ -378,6 +317,42 @@ public:
 		else if (GetKey(olc::Key::Q).bHeld) {
 			birds[0]->angle += 25 * degrees * 10 * (dTime);
 		}
+		return 0;
+	}
+
+
+	int Score(float birdX) {
+		if (pipeList[scorePipe].x < birdX) {
+			score++;
+			scorePipe += 1;
+		}
+		return 0;
+	}
+
+
+	int BirdCollide(float dTime) {
+
+		time1 += dTime;
+
+		for (int i = 0; i < birds.size(); i++) {
+			Collision(birds[i]);
+
+			if (birds[i]->collide) {
+
+				birds.erase(birds.begin() + i);
+				genes.erase(genes.begin() + i);
+				networks.erase(networks.begin() + i);
+			}
+			else
+			{
+
+				if (time1 >= fpsLock) {
+					time1 = 0;
+					genes[i]->fitness += 1;
+				}
+			}
+		}
+
 		return 0;
 	}
 
@@ -453,21 +428,6 @@ public:
 	}
 
 
-	std::vector<std::vector<bool>> GetMask(olc::Sprite* sprite) {
-
-		const int h = sprite->height * scale;
-		const int w = sprite->width * scale;
-
-		std::vector<std::vector<bool>> mask(h, std::vector<bool>(w, false));
-		for (int y = 0; y < h; y++) {
-			for (int x = 0; x < w; x++) {
-				mask[y][x] = (sprite->Sample((float)x / (float)w, (float)y / (float)h).a == 255);
-			}
-		}
-		return mask;
-	}
-
-
 	std::vector<std::vector<bool>> RotateBirdMask(Bird* bird) {
 		float s = sin(bird->angle);
 		float c = cos(bird->angle);
@@ -500,6 +460,76 @@ public:
 	}
 
 
+	std::vector<std::vector<bool>> GetMask(olc::Sprite* sprite) {
+
+		const int h = sprite->height * scale;
+		const int w = sprite->width * scale;
+
+		std::vector<std::vector<bool>> mask(h, std::vector<bool>(w, false));
+		for (int y = 0; y < h; y++) {
+			for (int x = 0; x < w; x++) {
+				mask[y][x] = (sprite->Sample((float)x / (float)w, (float)y / (float)h).a == 255);
+			}
+		}
+		return mask;
+	}
+
+
+	int Evaluate(float dTime) {
+
+		//time2 += dTime;
+
+		//if (time2 >= fpsLock) {
+
+			//time2 = 0;
+		Pipe pipe = pipeList[scorePipe];
+
+		if (game_loop) {
+
+			for (int i = 0; i < birds.size(); i++)
+			{
+				double dx = pipe.x - birds[i]->x + bird_w / 2;
+				double dy1 = pipe.y - birds[i]->y + bird_h / 2;
+				double dy2 = pipe.y - 161 - birds[i]->y + bird_h / 2;
+
+				auto result = networks[i]->Activate({ dx, dy1, dy2 });
+
+				//std::cout << result[0] << "\n";
+
+				if (result[0] > 0.5) {
+					birds[i]->Jump();
+				}
+			}
+		}
+
+		//if (score > 0)game_loop = false;
+	//}
+
+		return 0;
+	}
+
+
+	int NewPossiblePipe() {
+		Pipe pipe = pipeList[currentPipe];
+
+		if (pipe.x < (screen_w / 2)) {
+			pipeList.push_back(Pipe{ (pipe.x + pipe_w) + (screen_w / 2), RandomY });
+			currentPipe += 1;
+		}
+		return 0;
+	}
+
+
+	int PipeOffScreen() {
+		if (pipeList.front().x < -pipe_w) {
+			pipeList.erase(pipeList.begin());
+			currentPipe -= 1;
+			scorePipe -= 1;
+		}
+		return 0;
+	}
+
+
 	int GameOver() {
 		if (birds.size() == 0) {
 			//std::cout << neatAI.genomes[0]->fitness << "\n";
@@ -515,7 +545,7 @@ public:
 			scorePipe = 0;
 
 			genes = neatAI.genomes;
-			neatAI.ConstructNet();
+			networks = neatAI.ConstructNets();
 		}
 		return 0;
 	}
@@ -549,6 +579,18 @@ public:
 
 		return 0;
 	}
+
+
+	float TextCenter() {
+		int digit = 0;
+
+		for (char i : std::to_string(score)) {
+			digit++;
+		}
+		return ((screen_w - digit * (8 * 3 * scale)) / 2.f);
+	}
+
+	//###################################################################################################################################
 
 	int DrawNetwork() {
 
@@ -611,10 +653,11 @@ public:
 				DrawLineDecal({ x1, y1 }, { x2, y2 }, olc::GREEN);
 			}
 			else {
-				DrawLineDecal({ x1, y1 }, { x2, y2 }, olc::RED);
+				DrawLineDecal({ x1, y1 }, { x2, y2 }, olc::Pixel(255, 0, 0, 90));
 			}
 		}
 
+		//Draw bird lines
 		for (Bird* bird : birds)
 		{
 			float bx = bird->x + bird_w / 2;
@@ -630,37 +673,6 @@ public:
 
 		return 0;
 	}
-
-	float TextCenter() {
-		int digit = 0;
-
-		for (char i : std::to_string(score)) {
-			digit++;
-		}
-		return ((screen_w - digit * (8 * 3 * scale)) / 2.f);
-	}
-
-	//###################################################################################################################################
-
-	bool OnUserUpdate(float dTime) override {
-		GameLoop(dTime);
-		Draw(dTime);
-		DrawNetwork();
-
-
-		/*try {}
-		catch (std::runtime_error re) {
-			std::cout << re.what();
-			system("pause");
-		}*/
-
-		//std::thread t1(&Engine::GameLoop, this, dTime);
-		//std::thread t2(&Engine::Draw, this, dTime);
-		//t1.join();
-		//t2.join();
-		return true;
-	}
-
 };
 
 

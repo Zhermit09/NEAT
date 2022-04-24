@@ -22,7 +22,7 @@ namespace neat {
 
 	//const float Link_pct = 1;
 
-	const int Population_Size = 15;
+	const int Population_Size = 50;
 
 	//# Wheight options
 	const int Wheight_Range_Value = 30; //20?
@@ -326,15 +326,15 @@ namespace neat {
 
 			for (int i = 0; i < Num_Of_Inputs; i++)
 			{
-				node_genes.push_back(Node_Gene(i + 1, Node_Type::Input, 1, 0));//RandomDigits(Bias_Range_Value)));				
+				node_genes.push_back(Node_Gene(i + 1, Node_Type::Input, 1, 0 /*+ RandomDigits(Bias_Range_Value)*/));
 			}
 			for (int i = Num_Of_Inputs; i < Num_Of_Inputs + Num_Of_Outputs; i++)
 			{
-				node_genes.push_back(Node_Gene(i + 1, Node_Type::Output, (Num_Of_Hidden > 0) + 2, 0));//RandomDigits(Bias_Range_Value)));
+				node_genes.push_back(Node_Gene(i + 1, Node_Type::Output, (Num_Of_Hidden > 0) + 2, 0 /*+ RandomDigits(Bias_Range_Value)*/));
 			}
 			for (int i = Num_Of_Inputs + Num_Of_Outputs; i < Num_Of_Inputs + Num_Of_Outputs + Num_Of_Hidden; i++)
 			{
-				node_genes.push_back(Node_Gene(i + 1, Node_Type::Hidden, 2, 0));//RandomDigits(Bias_Range_Value)));
+				node_genes.push_back(Node_Gene(i + 1, Node_Type::Hidden, 2, 0 /*+ RandomDigits(Bias_Range_Value)*/));
 			}
 			return 0;
 		}
@@ -342,7 +342,7 @@ namespace neat {
 		int LinkInit() {
 
 			if (Num_Of_Hidden <= 0) {
- 
+
 				for (Node_Gene& node : node_genes)
 				{
 					if (node.type == Node_Type::Output) {
@@ -355,7 +355,7 @@ namespace neat {
 				}
 			}
 			else {
- 
+
 				for (Node_Gene& node : node_genes)
 				{
 					if (node.type == Node_Type::Hidden) {
@@ -396,11 +396,11 @@ namespace neat {
 					}
 				}
 			}
-			if(node_genes.size() > Num_Of_Inputs + Num_Of_Outputs){
-			for (int i = Num_Of_Inputs; i < Num_Of_Inputs + Num_Of_Outputs; i++)
-			{
-				node_genes[i].layer = highest_layer + 1;
-			}
+			if (node_genes.size() > Num_Of_Inputs + Num_Of_Outputs) {
+				for (int i = Num_Of_Inputs; i < Num_Of_Inputs + Num_Of_Outputs; i++)
+				{
+					node_genes[i].layer = highest_layer + 1;
+				}
 			}
 			else {
 				for (int i = Num_Of_Inputs; i < Num_Of_Inputs + Num_Of_Outputs; i++)
@@ -433,7 +433,7 @@ namespace neat {
 	struct Neuron {
 
 		double bias{};
-		//double sum_of_wheights{};
+		double sum_of_wheights{};
 		//int layer{};
 		double value = NAN;
 
@@ -456,21 +456,6 @@ namespace neat {
 				neurons.push_back(Neuron(node.bias));
 			}
 			return 0;
-		}
-
-		std::vector<double> Activate(std::vector<double> inputs) {
-
-			LoadInputs(inputs);
-			std::vector<double> results;
-
-			for (Node_Gene& node : genome->node_genes)
-			{
-				if (node.type == Node_Type::Output) {
-					results.push_back(getNodeValue(node.node_ID));
-				}
-			}
-
-			return results;
 		}
 
 		int LoadInputs(std::vector<double> inputs) {
@@ -496,30 +481,56 @@ namespace neat {
 			return 0;
 		}
 
+
+		std::vector<double> Activate(std::vector<double> inputs) {
+
+			LoadInputs(inputs);
+			std::vector<double> results;
+
+			for (Node_Gene& node : genome->node_genes)
+			{
+				if (node.type == Node_Type::Output) {
+					results.push_back(getNodeValue(node.node_ID));
+				}
+			}
+			for (Neuron& neuron : neurons)
+			{
+				//neuron.sum_of_wheights = 0;
+				neuron.value = NAN;
+			}
+
+			return results;
+		}
+
+
 		double ActFunction(double x) {
 			return tanh(x);
 		}
+
 
 		double getNodeValue(int node_ID) {
 			int i = node_ID - 1;
 
 			if (isnan(neurons[i].value)) {
 
-				double sum_of_wheights = 0;
+				neurons[i].sum_of_wheights = 0;
 
 				for (Link_Gene& link : genome->link_genes)
 				{
 					if (link.enabled) {
 						if (/*(link.from_node == node_number) or*/ link.to_node_ID == node_ID) {
-							sum_of_wheights += getNodeValue(link.from_node_ID) * link.wheight;
+							neurons[i].sum_of_wheights += getNodeValue(link.from_node_ID) * link.wheight;
 						}
 					}
 				}
-				neurons[i].value = ActFunction(sum_of_wheights + neurons[i].bias);
+
+				neurons[i].value = ActFunction(neurons[i].sum_of_wheights + neurons[i].bias);
+				//std::cout << "Neuron ID " << node_ID << " " << neurons[i].sum_of_wheights << " " << neurons[i].value << "\n";
 				return neurons[i].value;
 			}
 			else
 			{
+				//std::cout << "Neuron ID " << node_ID << " " << neurons[i].sum_of_wheights << " " << neurons[i].value << "\n";
 				return neurons[i].value;
 			}
 		}
@@ -530,19 +541,21 @@ namespace neat {
 	struct NEAT {
 
 		Link_List* global_link_list = new Link_List();
+
 		std::vector<Genome*> genomes;
-		std::vector<Network*> networks;
 
 		NEAT() {
 			for (int i = 0; i < Population_Size; i++)
 			{
-				Genome* temp = new Genome(global_link_list);
-				genomes.push_back(temp);
-				networks.push_back(new Network(temp));
+				genomes.push_back(new Genome(global_link_list));
+				//networks.push_back(new Network(temp));
 			}
 		}
 
-		int ConstructNet() {
+		std::vector<Network*> ConstructNets() {
+
+			std::vector<Network*> networks;
+
 			if (networks.empty()) {
 				networks.clear();
 				for (int i = 0; i < Population_Size; i++)
@@ -551,7 +564,7 @@ namespace neat {
 				}
 			}
 
-			return 0;
+			return networks;
 		}
 	};
 
