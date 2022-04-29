@@ -338,7 +338,7 @@ public:
 
 				if (time1 >= fpsLock) {
 					time1 = 0;
-					genes[i]->fitness += 1;
+					genes[i]->Fitness += 1;
 				}
 			}
 		}
@@ -523,10 +523,10 @@ public:
 	int GameOver() {
 		if (birds.size() == 0) {
 			//std::cout << neatAI.genomes[0]->fitness << "\n";
-			for (int i = 0; i < neat::Population_Size; i++)
+			for (int i = 0; i < neatAI.genomes.size(); i++)
 			{
 				birds.push_back(new Bird(((screen_w / 2.f) - (2.f * bird_w)), (screen_h - 125) / 2.f, sprites));
-				neatAI.genomes[i]->fitness = 0;
+				neatAI.genomes[i]->Fitness = 0;
 			}
 			pipeList.clear();
 			pipeList.push_back(Pipe{ (float)screen_w, RandomY });
@@ -534,6 +534,7 @@ public:
 			currentPipe = 0;
 			scorePipe = 0;
 
+			neatAI.Evolve();
 			genes = neatAI.genomes;
 			networks = neatAI.ConstructNets();
 		}
@@ -692,8 +693,7 @@ int main()
 	}*/
 	//drawtest(n);
 	//n->CompatibilityCheck();
-	
-	
+
 	Engine engine; {
 
 		if (engine.Construct(true_screen_w, true_screen_h, pixelSize, pixelSize)) {

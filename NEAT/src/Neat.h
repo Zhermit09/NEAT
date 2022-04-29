@@ -8,7 +8,7 @@
 int64_t Random();
 
 
-#ifdef NEAT_AI_NEURALNETWORK
+//#ifdef NEAT_AI_NEURALNETWORK
 #undef NEAT_AI_NEURALNETWORK
 
 namespace neat {
@@ -150,8 +150,8 @@ namespace neat {
 
 	struct Genome
 	{
-		double fitness{};
-		double A_fitness{};
+		double Fitness{};
+		double Avg_fitness{};
 
 		Link_List* global_link_list{};
 
@@ -384,17 +384,20 @@ namespace neat {
 
 	};
 
+
 	struct Spicie {
 
 		std::vector<Genome*> members;
-		double A_spicie_fitness{};
+		double Avg_spicie_fitness{};
+		double Adj_spicie_fitness{};
+		int Offspring_allowed{};
 
 
 		int AverageOutFitness() {
 
 			for (Genome* member : members)
 			{
-				member->A_fitness = member->fitness / members.size();
+				member->Avg_fitness = member->Fitness / members.size();
 			}
 
 			return 0;
@@ -402,29 +405,46 @@ namespace neat {
 
 		int AverageSpicieFitness() {
 
+			double sum = 0;
+
 			for (Genome* member : members)
 			{
-				A_spicie_fitness += member->fitness;
+				sum += member->Fitness;
 			}
-			A_spicie_fitness = A_spicie_fitness / members.size();
+			Avg_spicie_fitness = sum / members.size();
+
+			return 0;
+		}
+
+		int AdjustSpicieFitness() {
+			Adj_spicie_fitness = Avg_spicie_fitness / members.size();
 
 			return 0;
 		}
 
 	};
 
+
 	struct NEAT {
 
 		Link_List* global_link_list = new Link_List();
-
 		std::vector<Genome*> genomes;
 
+		double Global_spicie_avg{};
+		std::vector<Spicie*> spicies;
+
+
 		NEAT() {
+
 			for (int i = 0; i < Population_Size; i++)
 			{
 				genomes.push_back(new Genome(global_link_list));
-				//networks.push_back(new Network(temp));
 			}
+		}
+
+		int Evolve() {
+
+			return 0;
 		}
 
 		std::vector<Network*> ConstructNets() {
@@ -442,15 +462,46 @@ namespace neat {
 			return networks;
 		}
 
-		int CompatibilityCheck() {
+		int Speciate() {
+			spicies.clear();
+
+			std::vector<neat::Genome*> genes = genomes;
+			int k = 0;
+			Genome* net_A;
 
 
-			//list or just a tag for species
-			int net_A = Random() % genomes.size();
+			while (genes.size() != 0)
+			{
+				spicies.push_back(new Spicie());
+
+				k = (int)(Random() % genes.size());
+				net_A = genes[k];
+
+				spicies[spicies.size() - 1]->members.push_back(net_A);
+				genes.erase(genes.begin() + k);
+
+				Genome* genome;
+				for (int i = 0; i < genes.size(); i++)
+				{
+					genome = genomes[i];
+
+					if (CompatibilityCheck(net_A, genome, genes) <= comp_thresh) {
+
+					}
+				}
+
+			}
+
+		}
+
+		double CompatibilityCheck(Genome* net_A, std::vector<neat::Genome*>& genes) {//int net_A, std::vector<neat::Genome*>& genes
+
+
+			//int net_A = Random() % genes.size();
 			int maxID_A = getMaxID(net_A);
 			double CD = 0;
 
-			for (int net_B = 0; net_B < genomes.size(); net_B++)
+			for (int net_B = 0; net_B < genes.size(); net_B++)
 			{
 				int E = 0;
 				int D = 0;
@@ -459,32 +510,28 @@ namespace neat {
 
 				if (net_A != net_B) {
 
-					E = getExcess(net_B, maxID_A);
+					E = getExcess(net_B, maxID_A, genes);
 
-					D = getDisjoint(net_A, net_B);;
+					D = getDisjoint(net_A, net_B, genes);
 
-					dW = getdW(net_A, net_B);
+					dW = getdW(net_A, net_B, genes);
 
-					N = getN(genomes[net_A]->link_genes, genomes[net_B]->link_genes);
+					N = getN(genes[net_A]->link_genes, genes[net_B]->link_genes);
 
 					CD = (c1 * E) / N + (c2 * D) / N + (c3 * dW);
 
 					//std::cout << "E " << E << "\t" << "D " << D << "\t" << "dW " << dW << "\t" << "N " << N << "\t" << "CD " << CD << "\n";
 				}
-
-
 			}
 
-			//int maxID_B = getMaxID(0);
-
-			return 0;
+			return CD;
 		}
 
-		int getMaxID(int net_ID) {
+		int getMaxID(Genome* genome) {//int net_ID, std::vector<neat::Genome*>& genes
 
 			int maxID = 0;
 
-			for (Link_Gene& link : genomes[net_ID]->link_genes) {
+			for (Link_Gene& link : genome->link_genes) {
 				if (link.unique_ID > maxID) {
 					maxID = link.unique_ID;
 				}
@@ -492,11 +539,11 @@ namespace neat {
 			return maxID;
 		}
 
-		int getExcess(int net_B, int maxID_A) {
+		int getExcess(int net_B, int maxID_A, std::vector<neat::Genome*>& genes) {
 
 			int E = 0;
 
-			for (Link_Gene& link : genomes[net_B]->link_genes) {
+			for (Link_Gene& link : genes[net_B]->link_genes) {
 
 				if (link.unique_ID > maxID_A) {
 					E += 1;
@@ -506,14 +553,14 @@ namespace neat {
 			return E;
 		}
 
-		int getDisjoint(int net_A, int net_B) {
+		int getDisjoint(int net_A, int net_B, std::vector<neat::Genome*>& genes) {
 			int D = 0;
 
-			for (Link_Gene& link_A : genomes[net_A]->link_genes) {
+			for (Link_Gene& link_A : genes[net_A]->link_genes) {
 
 				bool dissjoint = true;
 
-				for (Link_Gene& link_B : genomes[net_B]->link_genes) {
+				for (Link_Gene& link_B : genes[net_B]->link_genes) {
 
 					if (link_B.unique_ID == link_A.unique_ID) {
 						dissjoint = false;
@@ -529,12 +576,12 @@ namespace neat {
 			return D;
 		}
 
-		double getdW(int net_A, int net_B) {
+		double getdW(int net_A, int net_B, std::vector<neat::Genome*>& genes) {
 
 			double dW = 0;
 
-			auto& links_A = genomes[net_A]->link_genes;
-			auto& links_B = genomes[net_B]->link_genes;
+			auto& links_A = genes[net_A]->link_genes;
+			auto& links_B = genes[net_B]->link_genes;
 			int size = 0;
 
 			double sum = 0;
@@ -575,6 +622,39 @@ namespace neat {
 			}
 
 			return counter;
+		}
+
+		int getAjustedGlobalSpicieAvg() {
+			double sum = 0;
+
+			for (Spicie* spicie : spicies)
+			{
+				sum += spicie->Avg_spicie_fitness;
+			}
+			Global_spicie_avg = sum / genomes.size();
+
+			return 0;
+		}
+
+		int CalcOffspring() {
+
+			int population = 0;
+
+			for (Spicie* spicie : spicies)
+			{
+				spicie->Offspring_allowed = (int)round((spicie->Adj_spicie_fitness * spicie->members.size()) / Global_spicie_avg);
+				population += spicie->Offspring_allowed;
+
+			}
+
+			/*if (population != Population_Size) {
+				double fitcompare = 0;
+				int i = 0;
+
+
+			}*/
+
+			return 0;
 		}
 
 	};
