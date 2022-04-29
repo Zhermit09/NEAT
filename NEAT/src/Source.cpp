@@ -12,8 +12,8 @@ const int screen_w = 576;
 const int screen_h = 800;
 const int true_screen_w = screen_w + 1000;
 const int true_screen_h = screen_h + 0;
-
 const int scale = 2;
+
 int pipe_w;
 int pipe_h;
 int bird_w;

@@ -33,11 +33,11 @@ namespace neat {
 
 
 	//# Compatibility
-	double c1 = 1;
-	double c2 = 2;
-	double c3 = 0.4;
+	const double c1 = 1;
+	const double c2 = 2;
+	const double c3 = 0.4;
 
-	double comp_thresh = 6.0;
+	const double comp_thresh = 6.0;
 
 	//------------------------------
 
@@ -151,6 +151,7 @@ namespace neat {
 	struct Genome
 	{
 		double fitness{};
+		double A_fitness{};
 
 		Link_List* global_link_list{};
 
@@ -383,6 +384,34 @@ namespace neat {
 
 	};
 
+	struct Spicie {
+
+		std::vector<Genome*> members;
+		double A_spicie_fitness{};
+
+
+		int AverageOutFitness() {
+
+			for (Genome* member : members)
+			{
+				member->A_fitness = member->fitness / members.size();
+			}
+
+			return 0;
+		}
+
+		int AverageSpicieFitness() {
+
+			for (Genome* member : members)
+			{
+				A_spicie_fitness += member->fitness;
+			}
+			A_spicie_fitness = A_spicie_fitness / members.size();
+
+			return 0;
+		}
+
+	};
 
 	struct NEAT {
 
@@ -417,7 +446,7 @@ namespace neat {
 
 
 			//list or just a tag for species
-			int net_A = 1;//Random() % genomes.size();
+			int net_A = Random() % genomes.size();
 			int maxID_A = getMaxID(net_A);
 			double CD = 0;
 
