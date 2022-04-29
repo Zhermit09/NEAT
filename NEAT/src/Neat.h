@@ -8,7 +8,7 @@
 int64_t Random();
 
 
-//#ifdef NEAT_AI_NEURALNETWORK
+#ifdef NEAT_AI_NEURALNETWORK
 #undef NEAT_AI_NEURALNETWORK
 
 namespace neat {
@@ -442,11 +442,6 @@ namespace neat {
 			}
 		}
 
-		int Evolve() {
-
-			return 0;
-		}
-
 		std::vector<Network*> ConstructNets() {
 
 			std::vector<Network*> networks;
@@ -462,8 +457,16 @@ namespace neat {
 			return networks;
 		}
 
+		int Evolve() {
+
+			Speciate();
+			std::cout << spicies.size()<<"\n";
+			return 0;
+		}
+
+
 		int Speciate() {
-			spicies.clear();
+			spicies.clear(); //Wrong, this is Gen 0 only!!!
 
 			std::vector<neat::Genome*> genes = genomes;
 			int k = 0;
@@ -480,72 +483,64 @@ namespace neat {
 				spicies[spicies.size() - 1]->members.push_back(net_A);
 				genes.erase(genes.begin() + k);
 
-				Genome* genome;
+				Genome* net_B;
+				std::vector<int> remove;
 				for (int i = 0; i < genes.size(); i++)
 				{
-					genome = genomes[i];
+					net_B = genes[i];
 
-					if (CompatibilityCheck(net_A, genome, genes) <= comp_thresh) {
-
+					if (CompatibilityCheck(net_A, net_B) <= comp_thresh) {
+						spicies[spicies.size() - 1]->members.push_back(net_B);
+						remove.push_back(i);
 					}
 				}
 
-			}
+				for (int i = (int)remove.size() - 1; i >= 0; i--)
+				{
+					genes.erase(genes.begin() + i);
 
+				}
+
+			}
+			return 0;
 		}
 
-		double CompatibilityCheck(Genome* net_A, std::vector<neat::Genome*>& genes) {//int net_A, std::vector<neat::Genome*>& genes
+		double CompatibilityCheck(Genome* net_A, Genome* net_B) {
 
+			//Tips for future debug, CD might be wrong cuz i'm checking for enabled connections only
 
-			//int net_A = Random() % genes.size();
-			int maxID_A = getMaxID(net_A);
-			double CD = 0;
+			int E = getExcess(net_B, getMaxID(net_A));
 
-			for (int net_B = 0; net_B < genes.size(); net_B++)
-			{
-				int E = 0;
-				int D = 0;
-				double dW = 0;
-				int N = 0;
+			int D = getDisjoint(net_A, net_B) + getDisjoint(net_B, net_A);
 
-				if (net_A != net_B) {
+			double dW = getdW(net_A, net_B);
 
-					E = getExcess(net_B, maxID_A, genes);
+			int N = getN(net_A, net_B);
 
-					D = getDisjoint(net_A, net_B, genes);
-
-					dW = getdW(net_A, net_B, genes);
-
-					N = getN(genes[net_A]->link_genes, genes[net_B]->link_genes);
-
-					CD = (c1 * E) / N + (c2 * D) / N + (c3 * dW);
-
-					//std::cout << "E " << E << "\t" << "D " << D << "\t" << "dW " << dW << "\t" << "N " << N << "\t" << "CD " << CD << "\n";
-				}
-			}
+			double CD = (c1 * E) / N + (c2 * D) / N + (c3 * dW);
 
 			return CD;
 		}
 
-		int getMaxID(Genome* genome) {//int net_ID, std::vector<neat::Genome*>& genes
+		int getMaxID(Genome* genome) {
 
 			int maxID = 0;
 
 			for (Link_Gene& link : genome->link_genes) {
-				if (link.unique_ID > maxID) {
+				if ((link.unique_ID > maxID) and link.enabled) {
 					maxID = link.unique_ID;
 				}
 			}
 			return maxID;
 		}
 
-		int getExcess(int net_B, int maxID_A, std::vector<neat::Genome*>& genes) {
+		int getExcess(Genome* net_B, int maxID_A) {
 
 			int E = 0;
 
-			for (Link_Gene& link : genes[net_B]->link_genes) {
+			for (Link_Gene& link : net_B->link_genes) {
 
-				if (link.unique_ID > maxID_A) {
+				if ((link.unique_ID > maxID_A) and link.enabled) {
 					E += 1;
 				}
 			}
@@ -553,35 +548,38 @@ namespace neat {
 			return E;
 		}
 
-		int getDisjoint(int net_A, int net_B, std::vector<neat::Genome*>& genes) {
+		int getDisjoint(Genome* net_A, Genome* net_B) {
 			int D = 0;
 
-			for (Link_Gene& link_A : genes[net_A]->link_genes) {
+			for (Link_Gene& link_A : net_A->link_genes) {
 
-				bool dissjoint = true;
+				if (link_A.enabled) {
 
-				for (Link_Gene& link_B : genes[net_B]->link_genes) {
+					bool dissjoint = true;
 
-					if (link_B.unique_ID == link_A.unique_ID) {
-						dissjoint = false;
-						break;
+					for (Link_Gene& link_B : net_B->link_genes) {
+
+						if ((link_B.unique_ID == link_A.unique_ID) and link_B.enabled) {
+							dissjoint = false;
+							break;
+						}
 					}
-				}
-				if (dissjoint) {
-					D += 1;
-				}
+					if (dissjoint) {
+						D += 1;
+					}
 
+				}
 			}
 
 			return D;
 		}
 
-		double getdW(int net_A, int net_B, std::vector<neat::Genome*>& genes) {
+		double getdW(Genome* net_A, Genome* net_B) {
 
 			double dW = 0;
 
-			auto& links_A = genes[net_A]->link_genes;
-			auto& links_B = genes[net_B]->link_genes;
+			auto& links_A = net_A->link_genes;
+			auto& links_B = net_B->link_genes;
 			int size = 0;
 
 			double sum = 0;
@@ -604,8 +602,10 @@ namespace neat {
 			return dW;
 		}
 
-		int getN(std::vector<Link_Gene>& links_A, std::vector<Link_Gene>& links_B) {
+		int getN(Genome* net_A, Genome* net_B) {
 
+			auto& links_A = net_A->link_genes;
+			auto& links_B = net_B->link_genes;
 			auto& big_Link = links_A;
 			int counter = 0;
 
