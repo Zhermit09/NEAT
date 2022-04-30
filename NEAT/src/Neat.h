@@ -17,27 +17,33 @@ namespace neat {
 
 	//# Network parameters
 	const int Num_Of_Inputs = 3;
-	const int Num_Of_Hidden = 0;       //Good to start off with one hidden if output is more than one
+	const int Num_Of_Hidden = 0;       //Good to start off with one hidden node if output is more than one
 	const int Num_Of_Outputs = 1;
 
 	//const float Link_pct = 1;
+	const int Population_Size = 100;
 
-	const int Population_Size = 15;
 
 	//# Wheight options
 	const int Wheight_Range_Value = 30; //20?
 
 
 	//# Bias options
-	const int Bias_Range_Value = 30;
+	const int Bias_Range_Value = 30;//don't need ?
 
 
 	//# Compatibility
-	const double c1 = 1;
-	const double c2 = 2;
-	const double c3 = 0.4;
+	const double C1 = 1;
+	const double C2 = 2;
+	const double C3 = 0.4;
 
-	const double comp_thresh = 6.0;
+	double Comp_Thresh = 6.0;
+	const double CT_Step_Size = 0.3;
+
+
+	//# Spicies
+	const int Target_Spicies = 5;
+	const int Drop_Off_Age = 15;
 
 	//------------------------------
 
@@ -150,6 +156,7 @@ namespace neat {
 
 	struct Genome
 	{
+		int num{};
 		double Fitness{};
 		double Avg_fitness{};
 
@@ -157,10 +164,11 @@ namespace neat {
 
 		std::vector<Node_Gene> node_genes{};
 		std::vector<Link_Gene> link_genes{};
-		//Problem with muliple of same ^connections
+		//Problem with muliple of same ^connections?
 
 
-		Genome(Link_List* list) {
+		Genome(Link_List* list, int i) {
+			num = i;
 			global_link_list = list;
 			Init();
 		}
@@ -390,7 +398,10 @@ namespace neat {
 		std::vector<Genome*> members;
 		double Avg_spicie_fitness{};
 		double Adj_spicie_fitness{};
+		double Max_fitness{};
+
 		int Offspring_allowed{};
+		int Gens_since_improved{};
 
 
 		int AverageOutFitness() {
@@ -417,8 +428,21 @@ namespace neat {
 		}
 
 		int AdjustSpicieFitness() {
+			AverageSpicieFitness();
 			Adj_spicie_fitness = Avg_spicie_fitness / members.size();
 
+			return 0;
+		}
+
+		int CheckMaxFitness() {
+
+			AdjustSpicieFitness();
+			Gens_since_improved++;
+
+			if (Max_fitness < Adj_spicie_fitness) {
+				Max_fitness = Adj_spicie_fitness;
+				Gens_since_improved = 0;
+			}
 			return 0;
 		}
 
@@ -438,7 +462,7 @@ namespace neat {
 
 			for (int i = 0; i < Population_Size; i++)
 			{
-				genomes.push_back(new Genome(global_link_list));
+				genomes.push_back(new Genome(global_link_list, i + 1));
 			}
 		}
 
@@ -460,48 +484,154 @@ namespace neat {
 		int Evolve() {
 
 			Speciate();
-			std::cout << spicies.size()<<"\n";
+
+			//----------Type shit-----------
+			std::cout << "\n" << "[" << spicies.size() << "\t" << Comp_Thresh << "]" << "\n";
+			int sum = 0;
+
+			for (Spicie* spicie : spicies)
+			{
+				sum += (int)(spicie->members.size());
+				std::cout << spicie->members.size() << "," << "   ";
+
+			}
+			std::cout << "Tot: " << sum << "\n";
+			//----------
+
+			Penalize();
+
 			return 0;
 		}
 
+		int Penalize() {
+
+
+			int i = 0;
+			std::vector<int> remove;
+
+			for (Spicie* spicie : spicies)
+			{
+				spicie->CheckMaxFitness();
+
+				if (spicie->Gens_since_improved >= Drop_Off_Age) {
+					remove.push_back(i);
+				}
+				i++;
+			}
+
+			for (int i = (int)remove.size() - 1; i >= 0; i--)
+			{
+				spicies.erase(spicies.begin() + remove[i]);
+
+			}
+			return 0;
+		}
 
 		int Speciate() {
-			spicies.clear(); //Wrong, this is Gen 0 only!!!
 
 			std::vector<neat::Genome*> genes = genomes;
-			int k = 0;
-			Genome* net_A;
 
+			if (spicies.size() == 0) {
+
+				NewSpicies(genes);
+
+			}
+			else {
+
+				std::vector<Genome*> representatives;
+
+				for (Spicie* spicie : spicies)
+				{
+					int k = (int)(Random() % spicie->members.size());
+					representatives.push_back({ spicie->members[k] });
+					spicie->members.clear();
+				}
+
+				int c = 0;
+				for (Genome* rep : representatives)
+				{
+					//spicies.push_back(new Spicie());
+					spicies[c]->members.push_back(rep);
+
+					for (int i = 0; i < genes.size(); i++)
+					{
+						if (genes[i] == rep) {
+							genes.erase(genes.begin() + i);
+							break;
+						}
+
+					}
+					c++;
+				}
+
+				for (Genome* net_A : representatives)
+				{
+					int i = 0;
+					std::vector<int> remove;
+					for (Genome* net_B : genes)
+					{
+						if (CompatibilityCheck(net_A, net_B) <= Comp_Thresh) {
+							spicies[spicies.size() - 1]->members.push_back(net_B);
+							remove.push_back(i);
+						}
+						i++;
+					}
+
+					for (int i = (int)remove.size() - 1; i >= 0; i--)
+					{
+						genes.erase(genes.begin() + remove[i]);
+
+					}
+
+				}
+
+				NewSpicies(genes);
+
+			}
+
+			if (spicies.size() > Target_Spicies) {
+				Comp_Thresh += CT_Step_Size;
+			}
+			else if ((spicies.size() < Target_Spicies) and (Comp_Thresh > 0)) {
+				Comp_Thresh -= CT_Step_Size;
+				if (Comp_Thresh < 0) {
+					Comp_Thresh = 0;
+				}
+			}
+
+			return 0;
+		}
+
+		int NewSpicies(std::vector<neat::Genome*>& genes) {
+
+			Genome* net_A;
 
 			while (genes.size() != 0)
 			{
+				//std::cout << "executed" << "\n";
 				spicies.push_back(new Spicie());
+				net_A = genes[(int)(Random() % genes.size())];
 
-				k = (int)(Random() % genes.size());
-				net_A = genes[k];
 
-				spicies[spicies.size() - 1]->members.push_back(net_A);
-				genes.erase(genes.begin() + k);
-
-				Genome* net_B;
+				int i = 0;
 				std::vector<int> remove;
-				for (int i = 0; i < genes.size(); i++)
-				{
-					net_B = genes[i];
 
-					if (CompatibilityCheck(net_A, net_B) <= comp_thresh) {
+				for (Genome* net_B : genes)
+				{
+					if (CompatibilityCheck(net_A, net_B) <= Comp_Thresh) {
 						spicies[spicies.size() - 1]->members.push_back(net_B);
 						remove.push_back(i);
 					}
+					i++;
 				}
 
 				for (int i = (int)remove.size() - 1; i >= 0; i--)
 				{
-					genes.erase(genes.begin() + i);
+					genes.erase(genes.begin() + remove[i]);
 
 				}
-
 			}
+
 			return 0;
 		}
 
@@ -512,12 +642,13 @@ namespace neat {
 			int E = getExcess(net_B, getMaxID(net_A));
 
 			int D = getDisjoint(net_A, net_B) + getDisjoint(net_B, net_A);
+			//std::cout << D << "\n";
 
 			double dW = getdW(net_A, net_B);
 
 			int N = getN(net_A, net_B);
 
-			double CD = (c1 * E) / N + (c2 * D) / N + (c3 * dW);
+			double CD = (C1 * E) / N + (C2 * D) / N + (C3 * dW);
 
 			return CD;
 		}

@@ -681,19 +681,6 @@ int main()
 {
 	int pixelSize = 1;
 
-	/*double cd = 0;
-	int counter = 1;
-
-	while (true)
-	{
-	neat::NEAT* n = new neat::NEAT();
-	cd += n->CompatibilityCheck();
-	std::cout << cd / counter <<"\n";
-	counter++;
-	}*/
-	//drawtest(n);
-	//n->CompatibilityCheck();
-
 	Engine engine; {
 
 		if (engine.Construct(true_screen_w, true_screen_h, pixelSize, pixelSize)) {
