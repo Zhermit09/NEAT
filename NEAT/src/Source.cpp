@@ -526,7 +526,6 @@ public:
 			for (int i = 0; i < neatAI.genomes.size(); i++)
 			{
 				birds.push_back(new Bird(((screen_w / 2.f) - (2.f * bird_w)), (screen_h - 125) / 2.f, sprites));
-				neatAI.genomes[i]->Fitness = 0;
 			}
 			pipeList.clear();
 			pipeList.push_back(Pipe{ (float)screen_w, RandomY });

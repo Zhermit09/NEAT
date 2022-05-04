@@ -1,8 +1,6 @@
 #include <iostream>
 #include <vector>
-//#include <numeric>
-//#include <string>
-//#include <cstdarg>
+#include <algorithm>
 
 #pragma once 
 int64_t Random();
@@ -44,6 +42,7 @@ namespace neat {
 	//# Spicies
 	const int Target_Spicies = 5;
 	const int Drop_Off_Age = 15;
+	const bool Elitism_On = true;
 
 	//------------------------------
 
@@ -156,9 +155,9 @@ namespace neat {
 
 	struct Genome
 	{
-		int num{};
+		int num{};//remove later
 		double Fitness{};
-		double Avg_fitness{};
+		//double Avg_fitness{};
 
 		Link_List* global_link_list{};
 
@@ -396,6 +395,7 @@ namespace neat {
 	struct Spicie {
 
 		std::vector<Genome*> members;
+		double Spicie_fitness{};
 		double Avg_spicie_fitness{};
 		double Adj_spicie_fitness{};
 		double Max_fitness{};
@@ -408,7 +408,7 @@ namespace neat {
 
 			for (Genome* member : members)
 			{
-				member->Avg_fitness = member->Fitness / members.size();
+				//member->Avg_fitness = member->Fitness / members.size();
 			}
 
 			return 0;
@@ -422,6 +422,7 @@ namespace neat {
 			{
 				sum += member->Fitness;
 			}
+			Spicie_fitness = sum;
 			Avg_spicie_fitness = sum / members.size();
 
 			return 0;
@@ -436,11 +437,10 @@ namespace neat {
 
 		int CheckMaxFitness() {
 
-			AdjustSpicieFitness();
 			Gens_since_improved++;
 
-			if (Max_fitness < Adj_spicie_fitness) {
-				Max_fitness = Adj_spicie_fitness;
+			if (Max_fitness < Avg_spicie_fitness) {
+				Max_fitness = Avg_spicie_fitness;
 				Gens_since_improved = 0;
 			}
 			return 0;
@@ -448,6 +448,11 @@ namespace neat {
 
 	};
 
+	bool CompareFitness(Genome* gene_A, Genome* gene_B) {
+
+		return(gene_A->Fitness > gene_B->Fitness);
+
+	}
 
 	struct NEAT {
 
@@ -466,24 +471,241 @@ namespace neat {
 			}
 		}
 
-		std::vector<Network*> ConstructNets() {
+		int Evolve() {
 
-			std::vector<Network*> networks;
+			SortGenomes();
 
-			if (networks.empty()) {
-				networks.clear();
-				for (int i = 0; i < Population_Size; i++)
+			Speciate();
+
+			getAjustedGlobalSpicieAvg();
+
+			CalcOffspring();
+
+			Penalize();
+
+			Crossover();
+
+			TypeShit(); //temp
+
+			//ClearFitness();
+
+			return 0;
+		}
+
+		Genome* RouletteSelection(Spicie* spicie) {
+
+			double prev_probabilty = 0.0;
+			double random = RandomDigits(1);
+
+			for (Genome* member : spicie->members)
+			{
+				if (random < (prev_probabilty + member->Fitness / spicie->Spicie_fitness)) {
+					return member;
+				}
+			}
+			std::cout << "\n" << "FUCKED!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!" << "\n";
+			return spicie->members[0];
+		}
+
+		Genome* Combine(Genome* net_A, Genome* net_B) { //preset chance of disable genes!!!!!!!!!!
+			Genome* parent_A;
+			Genome* parent_B;
+
+			if (net_A->Fitness > net_B->Fitness) {
+				parent_A = net_A;
+				parent_B = net_B;
+			}
+			else {
+				parent_A = net_B;
+				parent_B = net_A;
+			}
+
+			if (parent_A->Fitness != parent_B->Fitness) {
+
+				for (Link_Gene& link_A : parent_A->link_genes)
 				{
-					networks.push_back(new Network(genomes[i]));
+					for (Link_Gene& link_B : parent_B->link_genes)
+					{
+						if (link_A.unique_ID == link_B.unique_ID) {
+
+							if (1 == (Random() % 2)) {
+								link_A = link_B;
+							}
+
+						}
+					}
+				}
+				return parent_A;
+			}
+			else
+			{
+				std::vector<Node_Gene> node_gs{};
+				std::vector<Link_Gene> link_gs{};
+
+				//All random matching
+				for (Link_Gene& link_A : parent_A->link_genes)
+				{
+					for (Link_Gene& link_B : parent_B->link_genes)
+					{
+						if (link_A.unique_ID == link_B.unique_ID) {
+
+							if (1 == (Random() % 2)) {
+								link_gs.push_back(link_B);
+							}
+							else
+							{
+								link_gs.push_back(link_A);
+							}
+
+						}
+					}
+				}
+
+				//Disjoint & excess ranom from parent A
+				for (Link_Gene& link_A : parent_A->link_genes) {
+
+
+					bool dissjoint = true;
+
+					for (Link_Gene& link_B : parent_B->link_genes) {
+
+						if (link_B.unique_ID == link_A.unique_ID) {
+							dissjoint = false;
+							break;
+						}
+					}
+					if (dissjoint and (1 == (Random() % 2))) {
+
+						link_gs.push_back(link_A);
+
+					}
+
+
+				}
+
+				//Disjoint & excess ranom from parent B
+				for (Link_Gene& link_B : parent_B->link_genes) {
+
+
+					bool dissjoint = true;
+
+					for (Link_Gene& link_A : parent_A->link_genes) {
+
+						if (link_B.unique_ID == link_A.unique_ID) {
+							dissjoint = false;
+							break;
+						}
+					}
+					if (dissjoint and (1 == (Random() % 2))) {
+
+						link_gs.push_back(link_B);
+
+					}
+
+
+				}
+
+				for (Node_Gene& node : parent_A->node_genes) {
+					for (Link_Gene& link : link_gs) {
+						if ((link.from_node_ID == node.node_ID) or (link.to_node_ID == node.node_ID)) {
+
+							bool notExists = true;
+
+							for (Node_Gene& nd : node_gs) {
+								if (node.node_ID == nd.node_ID)
+								{
+									notExists = false;
+									break;
+								}
+							}
+
+							if (notExists) {
+								node_gs.push_back(node);
+							}
+						}
+					}
+				}
+
+				for (Node_Gene& node : parent_B->node_genes) {
+					for (Link_Gene& link : link_gs) {
+						if ((link.from_node_ID == node.node_ID) or (link.to_node_ID == node.node_ID)) {
+
+							bool notExists = true;
+
+							for (Node_Gene& nd : node_gs) {
+								if (node.node_ID == nd.node_ID)
+								{
+									notExists = false;
+									break;
+								}
+							}
+
+							if (notExists) {
+								node_gs.push_back(node);
+							}
+						}
+					}
+				}
+
+				parent_A->node_genes = node_gs;
+				parent_A->link_genes = link_gs;
+
+				return parent_A;
+			}
+
+
+			return 0;
+		}
+
+		int Crossover() {
+
+			std::vector<Genome*> genes;
+
+			Genome* parent_A;
+			Genome* parent_B;
+
+			if (Elitism_On) {
+				//Best genome is at the top beacause of previous sort
+				genes.push_back(genomes[0]);
+			}
+
+			for (Spicie* spicie : spicies)
+			{
+				for (int i = 0; i < spicie->Offspring_allowed; i++)
+				{
+					parent_A = RouletteSelection(spicie);
+					parent_B = RouletteSelection(spicie);
+
+					genes.push_back(Combine(parent_A, parent_B));
 				}
 			}
 
-			return networks;
+			while (genes.size() != Population_Size)
+			{
+				if (genes.size() > Population_Size) {
+					genes.pop_back();
+				}
+				else {
+					genes.push_back(new Genome(global_link_list, (int)(genes.size() + 1)));
+				}
+
+			}
+
+			genomes = genes;
+
+			return 0;
 		}
 
-		int Evolve() {
+		int ClearFitness() {
+			for (Genome* genome : genomes)
+			{
+				genome->Fitness = 0;
+			}
 
-			Speciate();
+			return 0;
+		}
+
+		int TypeShit() {
 
 			//----------Type shit-----------
 			std::cout << "\n" << "[" << spicies.size() << "\t" << Comp_Thresh << "]" << "\n";
@@ -495,11 +717,15 @@ namespace neat {
 				std::cout << spicie->members.size() << "," << "   ";
 
 			}
-			std::cout << "Tot: " << sum << "\n";
+			std::cout << "Tot: " << sum << " || genomes: " << genomes.size() << "\n";
 			//----------
 
-			Penalize();
+			return 0;
+		}
 
+		int SortGenomes() {
+
+			sort(genomes.begin(), genomes.end(), CompareFitness);
 			return 0;
 		}
 
@@ -514,7 +740,8 @@ namespace neat {
 				spicie->CheckMaxFitness();
 
 				if (spicie->Gens_since_improved >= Drop_Off_Age) {
-					remove.push_back(i);
+					spicie->Offspring_allowed = 0;
+					remove.push_back(i); //wrong
 				}
 				i++;
 			}
@@ -756,10 +983,12 @@ namespace neat {
 		}
 
 		int getAjustedGlobalSpicieAvg() {
+
 			double sum = 0;
 
 			for (Spicie* spicie : spicies)
 			{
+				spicie->AdjustSpicieFitness();
 				sum += spicie->Avg_spicie_fitness;
 			}
 			Global_spicie_avg = sum / genomes.size();
@@ -788,6 +1017,20 @@ namespace neat {
 			return 0;
 		}
 
+		std::vector<Network*> ConstructNets() {
+
+			std::vector<Network*> networks;
+
+			if (networks.empty()) {
+				networks.clear();
+				for (int i = 0; i < Population_Size; i++)
+				{
+					networks.push_back(new Network(genomes[i]));
+				}
+			}
+
+			return networks;
+		}
 	};
 
 }
