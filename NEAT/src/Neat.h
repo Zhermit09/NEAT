@@ -19,7 +19,7 @@ namespace neat {
 	const int Num_Of_Outputs = 1;
 
 	//const float Link_pct = 1;
-	const int Population_Size = 100;
+	const int Population_Size = 50;
 
 
 	//# Wheight options
@@ -171,6 +171,7 @@ namespace neat {
 			global_link_list = list;
 			Init();
 		}
+
 
 		int Init() {
 			NodeInit();
@@ -483,11 +484,11 @@ namespace neat {
 
 			Penalize();
 
-			Crossover();
+			//Crossover();
 
 			TypeShit(); //temp
 
-			//ClearFitness();
+			Clear();
 
 			return 0;
 		}
@@ -495,54 +496,51 @@ namespace neat {
 		Genome* RouletteSelection(Spicie* spicie) {
 
 			double prev_probabilty = 0.0;
-			double random = RandomDigits(1);
+			double random = abs(Random() % 1000) / 1000.;
 
 			for (Genome* member : spicie->members)
 			{
-				if (random < (prev_probabilty + member->Fitness / spicie->Spicie_fitness)) {
+				if (random < (prev_probabilty + (member->Fitness / spicie->Spicie_fitness))) {
 					return member;
+				}
+				else {
+					prev_probabilty += member->Fitness / spicie->Spicie_fitness;
 				}
 			}
 			std::cout << "\n" << "FUCKED!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!" << "\n";
 			return spicie->members[0];
 		}
 
-		Genome* Combine(Genome* net_A, Genome* net_B) { //preset chance of disable genes!!!!!!!!!!
+		Genome* Combine(Genome* net_A, Genome* net_B, std::vector<Genome*>& genes) { //preset chance of disable genes!!!!!!!!!!
 			Genome* parent_A;
 			Genome* parent_B;
+			Genome* result = new Genome(global_link_list, 99);
+			result->link_genes.clear();
+			result->node_genes.clear();
 
 			if (net_A->Fitness > net_B->Fitness) {
 				parent_A = net_A;
 				parent_B = net_B;
+
+				MatchingLinks(parent_A, parent_B, result);
+				result->node_genes = parent_A->node_genes;
+
+				return result;
 			}
-			else {
+			else if (net_A->Fitness < net_B->Fitness) {
 				parent_A = net_B;
 				parent_B = net_A;
-			}
 
-			if (parent_A->Fitness != parent_B->Fitness) {
+				MatchingLinks(parent_A, parent_B, result);
+				result->node_genes = parent_A->node_genes;
 
-				for (Link_Gene& link_A : parent_A->link_genes)
-				{
-					for (Link_Gene& link_B : parent_B->link_genes)
-					{
-						if (link_A.unique_ID == link_B.unique_ID) {
-
-							if (1 == (Random() % 2)) {
-								link_A = link_B;
-							}
-
-						}
-					}
-				}
-				return parent_A;
+				return result;
 			}
 			else
 			{
-				std::vector<Node_Gene> node_gs{};
-				std::vector<Link_Gene> link_gs{};
+				//Might be dum, might just be cloning mashine here
 
-				//All random matching
+				/*//All random matching
 				for (Link_Gene& link_A : parent_A->link_genes)
 				{
 					for (Link_Gene& link_B : parent_B->link_genes)
@@ -550,11 +548,11 @@ namespace neat {
 						if (link_A.unique_ID == link_B.unique_ID) {
 
 							if (1 == (Random() % 2)) {
-								link_gs.push_back(link_B);
+								result->link_genes.push_back(link_B);
 							}
 							else
 							{
-								link_gs.push_back(link_A);
+								result->link_genes.push_back(link_A);
 							}
 
 						}
@@ -563,7 +561,6 @@ namespace neat {
 
 				//Disjoint & excess ranom from parent A
 				for (Link_Gene& link_A : parent_A->link_genes) {
-
 
 					bool dissjoint = true;
 
@@ -576,16 +573,12 @@ namespace neat {
 					}
 					if (dissjoint and (1 == (Random() % 2))) {
 
-						link_gs.push_back(link_A);
-
+						result->link_genes.push_back(link_A);
 					}
-
-
 				}
 
 				//Disjoint & excess ranom from parent B
 				for (Link_Gene& link_B : parent_B->link_genes) {
-
 
 					bool dissjoint = true;
 
@@ -598,20 +591,17 @@ namespace neat {
 					}
 					if (dissjoint and (1 == (Random() % 2))) {
 
-						link_gs.push_back(link_B);
-
+						result->link_genes.push_back(link_B);
 					}
-
-
 				}
 
 				for (Node_Gene& node : parent_A->node_genes) {
-					for (Link_Gene& link : link_gs) {
+					for (Link_Gene& link : result->link_genes) {
 						if ((link.from_node_ID == node.node_ID) or (link.to_node_ID == node.node_ID)) {
 
 							bool notExists = true;
 
-							for (Node_Gene& nd : node_gs) {
+							for (Node_Gene& nd : result->node_genes) {
 								if (node.node_ID == nd.node_ID)
 								{
 									notExists = false;
@@ -620,19 +610,19 @@ namespace neat {
 							}
 
 							if (notExists) {
-								node_gs.push_back(node);
+								result->node_genes.push_back(node);
 							}
 						}
 					}
 				}
 
 				for (Node_Gene& node : parent_B->node_genes) {
-					for (Link_Gene& link : link_gs) {
+					for (Link_Gene& link : result->link_genes) {
 						if ((link.from_node_ID == node.node_ID) or (link.to_node_ID == node.node_ID)) {
 
 							bool notExists = true;
 
-							for (Node_Gene& nd : node_gs) {
+							for (Node_Gene& nd : result->node_genes) {
 								if (node.node_ID == nd.node_ID)
 								{
 									notExists = false;
@@ -641,19 +631,60 @@ namespace neat {
 							}
 
 							if (notExists) {
-								node_gs.push_back(node);
+								result->node_genes.push_back(node);
 							}
 						}
 					}
+					--------------------------------------
+
+					if (net_A->link_genes.size() > net_B->link_genes.size()) {
+					parent_A = net_A;
+					parent_B = net_B;
+				}
+				else {
+					parent_A = net_B;
+					parent_B = net_A;
 				}
 
-				parent_A->node_genes = node_gs;
-				parent_A->link_genes = link_gs;
+				for
+				}*/
 
-				return parent_A;
+				if (1 == (Random() % 2)) {
+					parent_A = net_B;
+					parent_B = net_A;
+				}
+				else {
+					parent_A = net_A;
+					parent_B = net_B;
+				}
+
+				MatchingLinks(parent_A, parent_B, result);
+				result->node_genes = parent_A->node_genes;
+
+				return result;
 			}
 
 
+			return 0;
+		}
+
+		int MatchingLinks(Genome* parent_A, Genome* parent_B, Genome* result) {
+
+			for (Link_Gene& link_A : parent_A->link_genes)
+			{
+				for (Link_Gene& link_B : parent_B->link_genes)
+				{
+					if (link_A.unique_ID == link_B.unique_ID) {
+
+						if (1 == (Random() % 2)) {
+							result->link_genes.push_back(link_B);
+						}
+						else { result->link_genes.push_back(link_A); }
+
+						break;
+					}
+				}
+			}
 			return 0;
 		}
 
@@ -676,7 +707,7 @@ namespace neat {
 					parent_A = RouletteSelection(spicie);
 					parent_B = RouletteSelection(spicie);
 
-					genes.push_back(Combine(parent_A, parent_B));
+					genes.push_back(Combine(parent_A, parent_B, genes));
 				}
 			}
 
@@ -691,15 +722,34 @@ namespace neat {
 
 			}
 
+			genomes.clear();
 			genomes = genes;
 
 			return 0;
 		}
 
-		int ClearFitness() {
+		int Clear() {
+			std::vector<int> remove;
+
 			for (Genome* genome : genomes)
 			{
 				genome->Fitness = 0;
+			}
+
+			for (int i = 0; i < spicies.size(); i++)
+			{
+				Spicie* spicie = spicies[i];
+				spicie->Spicie_fitness = 0;
+				spicie->Avg_spicie_fitness = 0;
+				spicie->Adj_spicie_fitness = 0;
+				spicie->Offspring_allowed = 0;
+				remove.push_back(i);
+			}
+
+			for (int i = (int)remove.size() - 1; i >= 0; i--)
+			{
+				spicies.erase(spicies.begin() + remove[i]);
+
 			}
 
 			return 0;
@@ -741,7 +791,7 @@ namespace neat {
 
 				if (spicie->Gens_since_improved >= Drop_Off_Age) {
 					spicie->Offspring_allowed = 0;
-					remove.push_back(i); //wrong
+					remove.push_back(i);
 				}
 				i++;
 			}
@@ -774,22 +824,6 @@ namespace neat {
 					spicie->members.clear();
 				}
 
-				int c = 0;
-				for (Genome* rep : representatives)
-				{
-					//spicies.push_back(new Spicie());
-					spicies[c]->members.push_back(rep);
-
-					for (int i = 0; i < genes.size(); i++)
-					{
-						if (genes[i] == rep) {
-							genes.erase(genes.begin() + i);
-							break;
-						}
-
-					}
-					c++;
-				}
 
 				for (Genome* net_A : representatives)
 				{

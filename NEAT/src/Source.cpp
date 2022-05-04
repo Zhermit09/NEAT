@@ -20,8 +20,7 @@ int bird_w;
 int bird_h;
 
 int score = 0;
-double time1 = 0;
-double time2 = 0;
+double timer = 0;
 double fpsLock = 1. / 30.;
 bool game_loop = true;  //can prob remove it as global later
 
@@ -312,9 +311,13 @@ public:
 
 
 	int Score(float birdX) {
-		if (pipeList[scorePipe].x < birdX) {
+		if (pipeList[scorePipe].x + pipe_w < birdX) { //<- cheeze
 			score++;
 			scorePipe += 1;
+
+			for (int i = 0; i < birds.size(); i++) {
+				genes[i]->Fitness += 10;
+			}
 		}
 		return 0;
 	}
@@ -322,25 +325,30 @@ public:
 
 	int BirdCollide(float dTime) {
 
-		time1 += dTime;
+		timer += dTime;
+		double t = timer;
+		std::vector<int> remove;
 
 		for (int i = 0; i < birds.size(); i++) {
+
 			Collision(birds[i]);
 
 			if (birds[i]->collide) {
-
-				birds.erase(birds.begin() + i);
-				genes.erase(genes.begin() + i);
-				networks.erase(networks.begin() + i);
+				remove.push_back(i);
 			}
-			else
-			{
+			else if (t >= fpsLock) {
+				timer = 0;
+				genes[i]->Fitness += 1;
+				//std::cout << i << "\n";
 
-				if (time1 >= fpsLock) {
-					time1 = 0;
-					genes[i]->Fitness += 1;
-				}
 			}
+		}
+
+		for (int i = (int)remove.size() - 1; i >= 0; i--)
+		{
+			birds.erase(birds.begin() + +remove[i]);
+			genes.erase(genes.begin() + remove[i]);
+			networks.erase(networks.begin() + remove[i]);
 		}
 
 		return 0;
@@ -660,6 +668,7 @@ public:
 			DrawLineDecal({ bx, by }, { px, py2 }, olc::RED);
 		}
 
+		DrawStringDecal({ true_screen_w - 100, 10 }, "Alive: " + std::to_string(birds.size()), olc::WHITE, { 1, 2 });
 
 		return 0;
 	}
