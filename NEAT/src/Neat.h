@@ -35,7 +35,7 @@ namespace neat {
 	const double C2 = 2;
 	const double C3 = 0.4;
 
-	double Comp_Thresh = 6.0;
+	double Comp_Thresh = 7.0;
 	const double CT_Step_Size = 0.3;
 
 
@@ -456,6 +456,12 @@ namespace neat {
 	}
 
 	struct NEAT {
+		int generation{};
+		int solutions{};
+		int evaluations{};
+		double performance_target{};
+		int max_generation{};
+		int spicies_num{};
 
 		Link_List* global_link_list = new Link_List();
 		std::vector<Genome*> genomes;
@@ -486,7 +492,7 @@ namespace neat {
 
 			//Crossover();
 
-			TypeShit(); //temp
+			//TypeShit(); //temp
 
 			Clear();
 
@@ -859,7 +865,7 @@ namespace neat {
 					Comp_Thresh = 0;
 				}
 			}
-
+			spicies_num = spicies.size();
 			return 0;
 		}
 

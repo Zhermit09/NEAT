@@ -198,6 +198,8 @@ public:
 		mask_Ground = GetMask(ground_image->sprite);
 
 		neatAI = neat::NEAT();
+		neatAI.performance_target = 50;
+		neatAI.max_generation = 50;
 		genes = neatAI.genomes;
 		networks = neatAI.ConstructNets();
 
@@ -239,7 +241,6 @@ public:
 
 		NewPossiblePipe();
 		PipeOffScreen();
-
 
 		GameOver();
 		return 0;
@@ -318,6 +319,11 @@ public:
 			for (int i = 0; i < birds.size(); i++) {
 				genes[i]->Fitness += 10;
 			}
+				if (neatAI.performance_target == score) {
+					neatAI.solutions += birds.size();
+					std::cout << "Soultion(s) were found, restart the program\n";
+					game_loop = false;
+				}
 		}
 		return 0;
 	}
@@ -335,6 +341,7 @@ public:
 
 			if (birds[i]->collide) {
 				remove.push_back(i);
+				neatAI.evaluations++;
 			}
 			else if (t >= fpsLock) {
 				timer = 0;
@@ -486,6 +493,7 @@ public:
 
 			for (int i = 0; i < birds.size(); i++)
 			{
+				
 				double dx = pipe.x - birds[i]->x + bird_w / 2;
 				double dy1 = pipe.y - birds[i]->y + bird_h / 2;
 				double dy2 = pipe.y - 161 - birds[i]->y + bird_h / 2;
@@ -544,6 +552,12 @@ public:
 			neatAI.Evolve();
 			genes = neatAI.genomes;
 			networks = neatAI.ConstructNets();
+			neatAI.generation++;
+		}
+
+		if (neatAI.max_generation <= neatAI.generation) {
+			std::cout << "Max generation reached, restart the program\n";
+			game_loop = false;
 		}
 		return 0;
 	}
@@ -668,7 +682,12 @@ public:
 			DrawLineDecal({ bx, by }, { px, py2 }, olc::RED);
 		}
 
-		DrawStringDecal({ true_screen_w - 100, 10 }, "Alive: " + std::to_string(birds.size()), olc::WHITE, { 1, 2 });
+		DrawStringDecal({ true_screen_w - 143, 10 }, "Generation: " + std::to_string(neatAI.generation), olc::WHITE, { 1, 2 });
+		DrawStringDecal({ true_screen_w - 103, 30 }, "Alive: " + std::to_string(birds.size()), olc::WHITE, { 1, 2 });
+		DrawStringDecal({ true_screen_w - 128, 50 }, "Solution: " + std::to_string(neatAI.solutions), olc::WHITE, { 1, 2 });
+		DrawStringDecal({ true_screen_w - 152, 70 }, "Evaluations: " + std::to_string(neatAI.evaluations), olc::WHITE, { 1, 2 });
+		DrawStringDecal({ true_screen_w - 120, 90 }, "Spicies: " + std::to_string(neatAI.spicies_num), olc::WHITE, { 1, 2 });
+		DrawStringDecal({ true_screen_w - 152, 110 }, "Comp thresh: " + std::to_string(neat::Comp_Thresh), olc::WHITE, { 1, 2 });
 
 		return 0;
 	}
