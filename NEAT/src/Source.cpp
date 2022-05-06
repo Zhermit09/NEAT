@@ -545,6 +545,7 @@ public:
 			}
 			pipeList.clear();
 			pipeList.push_back(Pipe{ (float)screen_w, RandomY });
+			std::cout << score<<"\n";
 			score = 0;
 			currentPipe = 0;
 			scorePipe = 0;
